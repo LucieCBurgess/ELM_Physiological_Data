@@ -11,5 +11,19 @@ colnames(mHealth_1) <- c("Acc_Chest_X","Acc_Chest_Y","Acc_Chest_Z","ECG_1","ECG_
 plot(mHealth_1$Acc_Chest_X[1:1000],type = "l")
 plot(mHealth_1$Activity_Label,type = "l")
 
+#Create a new data table that includes only the labelled data
+
+not_labelled <- mHealth_1[mHealth_1$Activity_Label==0,"id"]
+mHealth_1_labelled <- subset(mHealth_1, !(id %in% not_labelled))
+
+#Create new labels: 0 for inactive, 1 for active
+# Note that inactive labels are L1: Standing still (1 min), L2: Sitting and relaxing (1 min) L3: Lying down (1 min) )
+
+mHealth_1_labelled$Activity_Label_2 <- ifelse((mHealth_1$Activity_Label==1 || mHealth_1$Activity_Label==2 || mHealth_1$Activity_Label==3),0,1)
+
+# Try an ELM on the data and see if we can predict active or inactive using the ELMR from the data
+install.packages("ELMR")
+  
+
 
 
