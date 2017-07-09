@@ -21,6 +21,17 @@ mHealth_1_labelled$Activity_Label_2 <- ifelse((mHealth_1_labelled$Activity_Label
 plot(mHealth_1_labelled$Activity_Label,type = "l")
 plot(mHealth_1_labelled$Activity_Label_2,type = "l")
 
+# Add a velocity column for each set of accelerometer data - see https://physics.stackexchange.com/questions/153159/calculate-speed-from-accelerometer
+# We use delta t = 0.02s as observations are sampled at 50Hz (= 50 observations per second)
+# Hypothesis: the best predictor of activity is the ankle accelerometer
+# Could also look at the magnetometer and gyroscope data e.g. add a tilt column if there is time, although this is not key to the computer science problem
+
+mHealth_1_labelled$Velocity_Chest <- sqrt((mHealth_1_labelled$Acc_Chest_X*0.02)^2+(mHealth_1_labelled$Acc_Chest_Y*0.02)^2+(mHealth_1_labelled$Acc_Chest_Z*0.02)^2)
+mHealth_1_labelled$Velocity_LAnkle <- sqrt((mHealth_1_labelled$Acc_LAnkle_X*0.02)^2+(mHealth_1_labelled$Acc_LAnkle_Y*0.02)^2+(mHealth_1_labelled$Acc_LAnkle_Z*0.02)^2)
+mHealth_1_labelled$Velocity_Arm <- sqrt((mHealth_1_labelled$Acc_Arm_X*0.02)^2+(mHealth_1_labelled$Acc_Arm_Y*0.02)^2+(mHealth_1_labelled$Acc_Arm_Z*0.02)^2)
+
+View(mHealth_1_labelled)
+
 # Try an ELM on the data and see if we can predict active or inactive using the ELMR from the data
 # install.packages("ELMR")
 install.packages("elmNN")
@@ -33,13 +44,57 @@ train_index <- sample(seq_len(nrow(mHealth_1_labelled)),size = smp_size)
 train <- mHealth_1_labelled[train_index,]
 test <- mHealth_1_labelled[-train_index,]
 
-model <- elmtrain(x=train$Acc_Chest_X, y=train$Activity_Label_2, nhid=100, actfun="sig")
-prediction <- predict(model,newdata=test$Acc_Chest_X)
+model <- elmtrain(x=train$Velocity_LAnkle, y=train$Activity_Label_2, nhid=100, actfun="sig")
+prediction <- predict(model,newdata=test$Velocity_LAnkle)
 
 test <- cbind(test,prediction)
 View(test)
+print(model)
 
-#Prediction values are a probability so we need to convert them to (0,1) in order to calcuate the confusion matrix
+#Prediction values are a probability so we need to convert them to (0,1) in order to calculate the confusion matrix
+#Calculate the test MSE
+# Use a for loop to calculate the optimal value for the fitted(x) for which we choose (0 | 1)
+
+testMSE<-rep(0,20)
+for(i in 1:20) {
+  test$Binomial_prediction <- ifelse(test$prediction<=(0.05*i),0,1)
+  testMSE[i] <- mean(test$Binomial_prediction!=test$Activity_Label_2)
+}
+testMSE
+
+# 0.6 is the threshold which minimises the error based on fitted(x) -> (0 | 1)
+# This gives an error rate of 26.7%, which seems reasonable for this classifier
+
+test$Binomial_prediction <- ifelse(test$prediction<=0.6,0,1)
+testMSE_final <- mean(test$Binomial_prediction!=test$Activity_Label_2)
+testMSE_final
+
+# Now trying a logistic binomial regression based on a number of factors, to understand which is the best predictor of activity level
+
+#glm.fit=glm(Direction~Lag1+Lag2+Lag3+Lag4+Lag5+Volume,data=Weekly,family=binomial)
+glm.fit=glm(Activity_Label_2~Velocity_LAnkle+Velocity_Chest+Velocity_Arm+ECG_1+ECG_2,data=train, family=binomial)
+summary(glm.fit)
+glm.probs.train=predict(glm.fit,data=train,type='response')
+glm.probs.train[1:10]
+glm.predict.train=rep(0,26380)
+glm.predict.train[glm.probs.train>0.4]=1
+View(glm.predict.train)
+
+train <- cbind(train,glm.predict.train)
+View(train)
+
+train_MSE <- mean(train$glm.predict.train!=train$Activity_Label_2)
+train_MSE # 28.97% error
+
+# Calculate HRV (Heart-Rate-Variability) instead of ECG signal, which is not very significant
+plot(mHealth_1$ECG_1[2000:2200],type = "l")
+
+# Try K-means cross-validation
+
+# Test which number of hidden neurons and activation function gives a reduced testMSE
+# This is called feature extraction and is computationally intensive. It needs to be part of the pipeline
+
+#Investigate the data using a decision tree??
 
 
   
