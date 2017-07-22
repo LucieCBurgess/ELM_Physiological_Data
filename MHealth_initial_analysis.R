@@ -1,11 +1,11 @@
 # Upload data files from MHealth dataset into R and set as a data frame
 setwd("/Users/lucieburgess/Documents/Birkbeck/MSc_project/MHEALTHDATASET")
 WD <- getwd()
-WD
 
 #Upload file and set column names
 mHealth_1 <- read.table("mHealth_subject1.log", header = FALSE)
 colnames(mHealth_1) <- c("Acc_Chest_X","Acc_Chest_Y","Acc_Chest_Z","ECG_1","ECG_2","Acc_LAnkle_X","Acc_LAnkle_Y","Acc_LAnkle_Z","Gyro_Ankle_X","Gyro_Ankle_Y","Gyro_Ankle_Z","Magno_Ankle_X","Magno_Ankle_Y","Magno_Ankle_Z","Acc_Arm_X","Acc_Arm_Y","Acc_Arm_Z","Gyro_Arm_X","Gyro_Arm_Y","Gyro_Arm_Z","Magno_Arm_X","Magno_Arm_Y","Magno_Arm_Z","Activity_Label")
+
 #Observations taken at 50Hz so 50 readings per second
 plot(mHealth_1$Acc_Chest_X[1:1000],type = "l")
 plot(mHealth_1$Activity_Label,type = "l")
@@ -64,10 +64,83 @@ testMSE
 
 # 0.6 is the threshold which minimises the error based on fitted(x) -> (0 | 1)
 # This gives an error rate of 26.7%, which seems reasonable for this classifier
+# testMSE_final is the error rate for a threshold vector value of 0.6 for 'active' vs 'inactive'
 
 test$Binomial_prediction <- ifelse(test$prediction<=0.6,0,1)
 testMSE_final <- mean(test$Binomial_prediction!=test$Activity_Label_2)
 testMSE_final
+
+# Using a probability threshold of 0.6, tune for a different activation function. First of all try hardlimit
+library(elmNN)
+set.seed(2)
+smp_size  <- floor(0.75*nrow(mHealth_1_labelled))
+train_index <- sample(seq_len(nrow(mHealth_1_labelled)),size = smp_size)
+
+train <- mHealth_1_labelled[train_index,]
+test <- mHealth_1_labelled[-train_index,]
+
+model <- elmtrain(x=train$Velocity_LAnkle, y=train$Activity_Label_2, nhid=100, actfun="hardlim")
+prediction_hl <- predict(model,newdata=test$Velocity_LAnkle)
+
+test <- cbind(test,prediction_hl)
+print(model)
+
+testMSE<-rep(0,20)
+for(i in 1:20) {
+  test$Binomial_prediction <- ifelse(test$prediction_hl<=(0.05*i),0,1)
+  testMSE[i] <- mean(test$Binomial_prediction!=test$Activity_Label_2)
+}
+testMSE
+
+# Try a radial basis function
+
+model <- elmtrain(x=train$Velocity_LAnkle, y=train$Activity_Label_2, nhid=100, actfun="radbas")
+prediction_rb <- predict(model,newdata=test$Velocity_LAnkle)
+
+test <- cbind(test,prediction_rb)
+print(model)
+
+testMSE<-rep(0,20)
+for(i in 1:20) {
+  test$Binomial_prediction <- ifelse(test$prediction_rb<=(0.05*i),0,1)
+  testMSE[i] <- mean(test$Binomial_prediction!=test$Activity_Label_2)
+}
+testMSE
+
+# Different activation functions seem to give result of approx 26% error rate for a value of 0.6 probability for (0 | 1)
+# Hardlimit function seems to give slightly improved error rate
+
+# Now tune for the number of hidden neurons
+# This code falls over DO NOT RUN
+# There is no error in the code, it's just too slow
+#########################################################################
+
+testMSE <- rep(0,12)
+hidden_neurons = c(1,5,10,50,100,200,500,1000,2000,5000,10000,15000,20000)
+for (i in hidden_neurons) {
+  model <- elmtrain(x=train$Velocity_LAnkle, y=train$Activity_Label_2, nhid=hidden_neurons[i], actfun="hardlim")
+  prediction_hl <- predict(model,newdata=test$Velocity_LAnkle)
+  test <- cbind(test,prediction_hl)
+  print(model)
+  test$Binomial_prediction <- ifelse(test$prediction_hl<=0.6,0,1)
+  testMSE[i] <- mean(test$Binomial_prediction!=test$Activity_Label_2)
+}
+testMSE
+############################################################################
+
+# 500 hidden neurons takes about 30 seconds, 1,000 hidden neurons takes about 3 minutes
+model <- elmtrain(x=train$Velocity_LAnkle, y=train$Activity_Label_2, nhid=1000, actfun="hardlim")
+prediction_hl <- predict(model,newdata=test$Velocity_LAnkle)
+test <- cbind(test,prediction_hl)
+print(model)
+
+# For 1,000 hidden neurons, find the value of test$prediction_hl that gives the lowest test MSE for a value of (0 | 1)
+testMSE<-rep(0,20)
+for(i in 1:20) {
+  test$Binomial_prediction <- ifelse(test$prediction_hl<=(0.05*i),0,1)
+  testMSE[i] <- mean(test$Binomial_prediction!=test$Activity_Label_2)
+}
+testMSE
 
 # Now trying a logistic binomial regression based on a number of factors, to understand which is the best predictor of activity level
 
@@ -85,6 +158,28 @@ View(train)
 
 train_MSE <- mean(train$glm.predict.train!=train$Activity_Label_2)
 train_MSE # 28.97% error
+
+# Trying Spark with R to see if we can get an increase in the speed
+Sys.getenv()
+
+# This from the SparkR tutorial but doesn't seem to work
+install.packages("sparkR")
+
+if (nchar(Sys.getenv("SPARK_HOME")) < 1) {
+  Sys.setenv(SPARK_HOME = "/home/spark")
+}
+library(SparkR, lib.loc = c(file.path(Sys.getenv("SPARK_HOME"), "R", "lib")))
+sparkR.session(master = "local[*]", sparkConfig = list(spark.driver.memory = "2g"))
+
+# Install SparklyR and Spark
+
+install.packages("sparklyr")
+library(sparklyr)
+spark_available_versions()
+spark_install(version = "2.0.2", hadoop_version = "2.7")
+
+
+
 
 # Calculate HRV (Heart-Rate-Variability) instead of ECG signal, which is not very significant
 plot(mHealth_1$ECG_1[2000:2200],type = "l")
