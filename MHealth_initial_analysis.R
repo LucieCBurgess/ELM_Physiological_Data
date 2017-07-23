@@ -159,49 +159,16 @@ View(train)
 train_MSE <- mean(train$glm.predict.train!=train$Activity_Label_2)
 train_MSE # 28.97% error
 
-# Calculate HRV (Heart-Rate-Variability) instead of ECG signal, which is not very significant
+# Calculate HRV (Heart-Rate-Variability) instead of ECG signal, which is not very significant predictor according to the glm
 plot(mHealth_1$ECG_1[2000:2200],type = "l")
 
-# Try K-means cross-validation
+# Try K-means cross-validation - need to write the code for this
 
 # Test which number of hidden neurons and activation function gives a reduced testMSE
 # This is called feature extraction and is computationally intensive. It needs to be part of the pipeline
 
-#Investigate the data using a decision tree??
+# Investigate the data using a decision tree??
 
-
-##########################################################################
-# Working with Spark
-
-# Trying Spark with R to see if we can get an increase in the speed
-Sys.getenv()
-
-# This from the SparkR tutorial but doesn't seem to work
-install.packages("sparkR")
-
-if (nchar(Sys.getenv("SPARK_HOME")) < 1) {
-  Sys.setenv(SPARK_HOME = "/home/spark")
-}
-library(SparkR, lib.loc = c(file.path(Sys.getenv("SPARK_HOME"), "R", "lib")))
-sparkR.session(master = "local[*]", sparkConfig = list(spark.driver.memory = "2g"))
-
-# Install SparklyR and Spark. SparklyR is a package which gives a front-end for Spark using R.
-# Also download a local version of Spark (in case of not using a remote cluster)
-
-install.packages("sparklyr")
-install.packages("dplyr")
-library(sparklyr)
-spark_available_versions()
-# sparklyR seems to work with Spark v.1.6.2
-spark_install(version = "1.6.2")
-spark_install(version = "2.0.2", hadoop_version = "2.7")
-sc <- spark_connect(master = "local")
-
-library(dplyr)
-mHealth_1_tbl <- copy_to(sc, mHealth_1_labelled)
-src_tbls(sc)
-
-mHealth_1_tbl %>%dplyr::filter(Activity_Label == 12)
 
 
 
