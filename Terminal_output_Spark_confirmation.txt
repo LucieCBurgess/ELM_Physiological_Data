@@ -1,0 +1,280 @@
+Last login: Fri Aug  4 10:13:30 on ttys000
+DIGI-LBurgess-6:~ lucieburgess$ cd /Applications/spark-2.2.0-bin-hadoop2.7 
+DIGI-LBurgess-6:spark-2.2.0-bin-hadoop2.7 lucieburgess$ .bin/spark-shell
+-bash: .bin/spark-shell: No such file or directory
+DIGI-LBurgess-6:spark-2.2.0-bin-hadoop2.7 lucieburgess$ ./bin/spark-shell
+Using Spark's default log4j profile: org/apache/spark/log4j-defaults.properties
+Setting default log level to "WARN".
+To adjust logging level use sc.setLogLevel(newLevel). For SparkR, use setLogLevel(newLevel).
+17/08/04 10:59:39 WARN NativeCodeLoader: Unable to load native-hadoop library for your platform... using builtin-java classes where applicable
+17/08/04 10:59:46 WARN ObjectStore: Failed to get database global_temp, returning NoSuchObjectException
+Spark context Web UI available at http://192.168.1.163:4040
+Spark context available as 'sc' (master = local[*], app id = local-1501840780335).
+Spark session available as 'spark'.
+Welcome to
+      ____              __
+     / __/__  ___ _____/ /__
+    _\ \/ _ \/ _ `/ __/  '_/
+   /___/ .__/\_,_/_/ /_/\_\   version 2.2.0
+      /_/
+         
+Using Scala version 2.11.8 (Java HotSpot(TM) 64-Bit Server VM, Java 1.8.0_112)
+Type in expressions to have them evaluated.
+Type :help for more information.
+
+scala> val textFile = spark.read.textFile("/Users/lucieburgess/Desktop/Spark_test_text_file.txt") 
+textFile: org.apache.spark.sql.Dataset[String] = [value: string]
+
+scala> textFile.count()
+res0: Long = 204
+
+scala> textFile.first()
+res1: String = Digital Catapult Digital Health and Care -  Five Year Strategic Plan
+
+scala> val linesWithHealth = textFile.filter(line => line.contains("Spark"))
+linesWithHealth: org.apache.spark.sql.Dataset[String] = [value: string]
+
+scala> linesWithHelth = textFile.filter(line => line.contains("health"))
+<console>:27: error: not found: value linesWithHelth
+val $ires6 = linesWithHelth
+             ^
+<console>:25: error: not found: value linesWithHelth
+       linesWithHelth = textFile.filter(line => line.contains("health"))
+       ^
+
+scala> linesWithHealth = textFile.filter(line => line.contains("health"))
+<console>:27: error: reassignment to val
+       linesWithHealth = textFile.filter(line => line.contains("health"))
+                       ^
+
+scala> val linesWithHealth = textFile.filter(line => line.contains("health"))
+linesWithHealth: org.apache.spark.sql.Dataset[String] = [value: string]
+
+scala> textFile.filter(line => line.contains("health")).count()
+res2: Long = 61
+
+scala> val longestLine = textFile.map(line => line.split(" ").size).reduce((a,b) => if (a >b) a else b)
+longestLine: Int = 167
+
+scala> run-example LocalPi
+<console>:24: error: not found: value run
+       run-example LocalPi
+       ^
+<console>:24: error: not found: value example
+       run-example LocalPi
+           ^
+
+scala> :q
+DIGI-LBurgess-6:spark-2.2.0-bin-hadoop2.7 lucieburgess$ ./bin/run-example SparkPi 10
+Using Spark's default log4j profile: org/apache/spark/log4j-defaults.properties
+17/08/04 14:01:57 INFO SparkContext: Running Spark version 2.2.0
+17/08/04 14:01:57 WARN NativeCodeLoader: Unable to load native-hadoop library for your platform... using builtin-java classes where applicable
+17/08/04 14:01:57 INFO SparkContext: Submitted application: Spark Pi
+17/08/04 14:01:57 INFO SecurityManager: Changing view acls to: lucieburgess
+17/08/04 14:01:57 INFO SecurityManager: Changing modify acls to: lucieburgess
+17/08/04 14:01:57 INFO SecurityManager: Changing view acls groups to: 
+17/08/04 14:01:57 INFO SecurityManager: Changing modify acls groups to: 
+17/08/04 14:01:57 INFO SecurityManager: SecurityManager: authentication disabled; ui acls disabled; users  with view permissions: Set(lucieburgess); groups with view permissions: Set(); users  with modify permissions: Set(lucieburgess); groups with modify permissions: Set()
+17/08/04 14:01:58 INFO Utils: Successfully started service 'sparkDriver' on port 49955.
+17/08/04 14:01:58 INFO SparkEnv: Registering MapOutputTracker
+17/08/04 14:01:58 INFO SparkEnv: Registering BlockManagerMaster
+17/08/04 14:01:58 INFO BlockManagerMasterEndpoint: Using org.apache.spark.storage.DefaultTopologyMapper for getting topology information
+17/08/04 14:01:58 INFO BlockManagerMasterEndpoint: BlockManagerMasterEndpoint up
+17/08/04 14:01:58 INFO DiskBlockManager: Created local directory at /private/var/folders/rt/nskttm3s6ys1w3gvm07bg0700000gp/T/blockmgr-f25a548c-141b-4e8e-afc5-b013b018377b
+17/08/04 14:01:58 INFO MemoryStore: MemoryStore started with capacity 366.3 MB
+17/08/04 14:01:58 INFO SparkEnv: Registering OutputCommitCoordinator
+17/08/04 14:01:58 INFO Utils: Successfully started service 'SparkUI' on port 4040.
+17/08/04 14:01:58 INFO SparkUI: Bound SparkUI to 0.0.0.0, and started at http://192.168.1.163:4040
+17/08/04 14:01:58 INFO SparkContext: Added JAR file:/Applications/spark-2.2.0-bin-hadoop2.7/examples/jars/scopt_2.11-3.3.0.jar at spark://192.168.1.163:49955/jars/scopt_2.11-3.3.0.jar with timestamp 1501851718747
+17/08/04 14:01:58 INFO SparkContext: Added JAR file:/Applications/spark-2.2.0-bin-hadoop2.7/examples/jars/spark-examples_2.11-2.2.0.jar at spark://192.168.1.163:49955/jars/spark-examples_2.11-2.2.0.jar with timestamp 1501851718748
+17/08/04 14:01:58 INFO Executor: Starting executor ID driver on host localhost
+17/08/04 14:01:58 INFO Utils: Successfully started service 'org.apache.spark.network.netty.NettyBlockTransferService' on port 49956.
+17/08/04 14:01:58 INFO NettyBlockTransferService: Server created on 192.168.1.163:49956
+17/08/04 14:01:58 INFO BlockManager: Using org.apache.spark.storage.RandomBlockReplicationPolicy for block replication policy
+17/08/04 14:01:58 INFO BlockManagerMaster: Registering BlockManager BlockManagerId(driver, 192.168.1.163, 49956, None)
+17/08/04 14:01:58 INFO BlockManagerMasterEndpoint: Registering block manager 192.168.1.163:49956 with 366.3 MB RAM, BlockManagerId(driver, 192.168.1.163, 49956, None)
+17/08/04 14:01:58 INFO BlockManagerMaster: Registered BlockManager BlockManagerId(driver, 192.168.1.163, 49956, None)
+17/08/04 14:01:58 INFO BlockManager: Initialized BlockManager: BlockManagerId(driver, 192.168.1.163, 49956, None)
+17/08/04 14:01:59 INFO SharedState: Setting hive.metastore.warehouse.dir ('null') to the value of spark.sql.warehouse.dir ('file:/Applications/spark-2.2.0-bin-hadoop2.7/spark-warehouse/').
+17/08/04 14:01:59 INFO SharedState: Warehouse path is 'file:/Applications/spark-2.2.0-bin-hadoop2.7/spark-warehouse/'.
+17/08/04 14:02:00 INFO StateStoreCoordinatorRef: Registered StateStoreCoordinator endpoint
+17/08/04 14:02:00 INFO SparkContext: Starting job: reduce at SparkPi.scala:38
+17/08/04 14:02:00 INFO DAGScheduler: Got job 0 (reduce at SparkPi.scala:38) with 10 output partitions
+17/08/04 14:02:00 INFO DAGScheduler: Final stage: ResultStage 0 (reduce at SparkPi.scala:38)
+17/08/04 14:02:00 INFO DAGScheduler: Parents of final stage: List()
+17/08/04 14:02:00 INFO DAGScheduler: Missing parents: List()
+17/08/04 14:02:00 INFO DAGScheduler: Submitting ResultStage 0 (MapPartitionsRDD[1] at map at SparkPi.scala:34), which has no missing parents
+17/08/04 14:02:00 INFO MemoryStore: Block broadcast_0 stored as values in memory (estimated size 1832.0 B, free 366.3 MB)
+17/08/04 14:02:00 INFO MemoryStore: Block broadcast_0_piece0 stored as bytes in memory (estimated size 1172.0 B, free 366.3 MB)
+17/08/04 14:02:00 INFO BlockManagerInfo: Added broadcast_0_piece0 in memory on 192.168.1.163:49956 (size: 1172.0 B, free: 366.3 MB)
+17/08/04 14:02:00 INFO SparkContext: Created broadcast 0 from broadcast at DAGScheduler.scala:1006
+17/08/04 14:02:00 INFO DAGScheduler: Submitting 10 missing tasks from ResultStage 0 (MapPartitionsRDD[1] at map at SparkPi.scala:34) (first 15 tasks are for partitions Vector(0, 1, 2, 3, 4, 5, 6, 7, 8, 9))
+17/08/04 14:02:00 INFO TaskSchedulerImpl: Adding task set 0.0 with 10 tasks
+17/08/04 14:02:01 INFO TaskSetManager: Starting task 0.0 in stage 0.0 (TID 0, localhost, executor driver, partition 0, PROCESS_LOCAL, 4825 bytes)
+17/08/04 14:02:01 INFO TaskSetManager: Starting task 1.0 in stage 0.0 (TID 1, localhost, executor driver, partition 1, PROCESS_LOCAL, 4825 bytes)
+17/08/04 14:02:01 INFO TaskSetManager: Starting task 2.0 in stage 0.0 (TID 2, localhost, executor driver, partition 2, PROCESS_LOCAL, 4825 bytes)
+17/08/04 14:02:01 INFO TaskSetManager: Starting task 3.0 in stage 0.0 (TID 3, localhost, executor driver, partition 3, PROCESS_LOCAL, 4825 bytes)
+17/08/04 14:02:01 INFO Executor: Running task 1.0 in stage 0.0 (TID 1)
+17/08/04 14:02:01 INFO Executor: Running task 2.0 in stage 0.0 (TID 2)
+17/08/04 14:02:01 INFO Executor: Running task 0.0 in stage 0.0 (TID 0)
+17/08/04 14:02:01 INFO Executor: Running task 3.0 in stage 0.0 (TID 3)
+17/08/04 14:02:01 INFO Executor: Fetching spark://192.168.1.163:49955/jars/scopt_2.11-3.3.0.jar with timestamp 1501851718747
+17/08/04 14:02:01 INFO TransportClientFactory: Successfully created connection to /192.168.1.163:49955 after 37 ms (0 ms spent in bootstraps)
+17/08/04 14:02:01 INFO Utils: Fetching spark://192.168.1.163:49955/jars/scopt_2.11-3.3.0.jar to /private/var/folders/rt/nskttm3s6ys1w3gvm07bg0700000gp/T/spark-1b7fc7ff-e79a-4325-b2a5-5527c817aeef/userFiles-c4a7cfb0-c42f-4548-9127-e5e2e93ff4ba/fetchFileTemp7738952721875094605.tmp
+17/08/04 14:02:01 INFO Executor: Adding file:/private/var/folders/rt/nskttm3s6ys1w3gvm07bg0700000gp/T/spark-1b7fc7ff-e79a-4325-b2a5-5527c817aeef/userFiles-c4a7cfb0-c42f-4548-9127-e5e2e93ff4ba/scopt_2.11-3.3.0.jar to class loader
+17/08/04 14:02:01 INFO Executor: Fetching spark://192.168.1.163:49955/jars/spark-examples_2.11-2.2.0.jar with timestamp 1501851718748
+17/08/04 14:02:01 INFO Utils: Fetching spark://192.168.1.163:49955/jars/spark-examples_2.11-2.2.0.jar to /private/var/folders/rt/nskttm3s6ys1w3gvm07bg0700000gp/T/spark-1b7fc7ff-e79a-4325-b2a5-5527c817aeef/userFiles-c4a7cfb0-c42f-4548-9127-e5e2e93ff4ba/fetchFileTemp6500077540052636117.tmp
+17/08/04 14:02:01 INFO Executor: Adding file:/private/var/folders/rt/nskttm3s6ys1w3gvm07bg0700000gp/T/spark-1b7fc7ff-e79a-4325-b2a5-5527c817aeef/userFiles-c4a7cfb0-c42f-4548-9127-e5e2e93ff4ba/spark-examples_2.11-2.2.0.jar to class loader
+17/08/04 14:02:01 INFO Executor: Finished task 3.0 in stage 0.0 (TID 3). 824 bytes result sent to driver
+17/08/04 14:02:01 INFO Executor: Finished task 0.0 in stage 0.0 (TID 0). 824 bytes result sent to driver
+17/08/04 14:02:01 INFO Executor: Finished task 2.0 in stage 0.0 (TID 2). 824 bytes result sent to driver
+17/08/04 14:02:01 INFO Executor: Finished task 1.0 in stage 0.0 (TID 1). 824 bytes result sent to driver
+17/08/04 14:02:01 INFO TaskSetManager: Starting task 4.0 in stage 0.0 (TID 4, localhost, executor driver, partition 4, PROCESS_LOCAL, 4825 bytes)
+17/08/04 14:02:01 INFO Executor: Running task 4.0 in stage 0.0 (TID 4)
+17/08/04 14:02:01 INFO TaskSetManager: Starting task 5.0 in stage 0.0 (TID 5, localhost, executor driver, partition 5, PROCESS_LOCAL, 4825 bytes)
+17/08/04 14:02:01 INFO TaskSetManager: Starting task 6.0 in stage 0.0 (TID 6, localhost, executor driver, partition 6, PROCESS_LOCAL, 4825 bytes)
+17/08/04 14:02:01 INFO Executor: Running task 6.0 in stage 0.0 (TID 6)
+17/08/04 14:02:01 INFO TaskSetManager: Starting task 7.0 in stage 0.0 (TID 7, localhost, executor driver, partition 7, PROCESS_LOCAL, 4825 bytes)
+17/08/04 14:02:01 INFO Executor: Running task 7.0 in stage 0.0 (TID 7)
+17/08/04 14:02:01 INFO TaskSetManager: Finished task 2.0 in stage 0.0 (TID 2) in 498 ms on localhost (executor driver) (1/10)
+17/08/04 14:02:01 INFO TaskSetManager: Finished task 3.0 in stage 0.0 (TID 3) in 502 ms on localhost (executor driver) (2/10)
+17/08/04 14:02:01 INFO TaskSetManager: Finished task 1.0 in stage 0.0 (TID 1) in 504 ms on localhost (executor driver) (3/10)
+17/08/04 14:02:01 INFO TaskSetManager: Finished task 0.0 in stage 0.0 (TID 0) in 529 ms on localhost (executor driver) (4/10)
+17/08/04 14:02:01 INFO Executor: Running task 5.0 in stage 0.0 (TID 5)
+17/08/04 14:02:01 INFO Executor: Finished task 5.0 in stage 0.0 (TID 5). 867 bytes result sent to driver
+17/08/04 14:02:01 INFO TaskSetManager: Starting task 8.0 in stage 0.0 (TID 8, localhost, executor driver, partition 8, PROCESS_LOCAL, 4825 bytes)
+17/08/04 14:02:01 INFO TaskSetManager: Finished task 5.0 in stage 0.0 (TID 5) in 78 ms on localhost (executor driver) (5/10)
+17/08/04 14:02:01 INFO Executor: Running task 8.0 in stage 0.0 (TID 8)
+17/08/04 14:02:01 INFO Executor: Finished task 4.0 in stage 0.0 (TID 4). 910 bytes result sent to driver
+17/08/04 14:02:01 INFO TaskSetManager: Starting task 9.0 in stage 0.0 (TID 9, localhost, executor driver, partition 9, PROCESS_LOCAL, 4825 bytes)
+17/08/04 14:02:01 INFO TaskSetManager: Finished task 4.0 in stage 0.0 (TID 4) in 160 ms on localhost (executor driver) (6/10)
+17/08/04 14:02:01 INFO Executor: Finished task 8.0 in stage 0.0 (TID 8). 824 bytes result sent to driver
+17/08/04 14:02:01 INFO Executor: Finished task 7.0 in stage 0.0 (TID 7). 867 bytes result sent to driver
+17/08/04 14:02:01 INFO Executor: Running task 9.0 in stage 0.0 (TID 9)
+17/08/04 14:02:01 INFO TaskSetManager: Finished task 8.0 in stage 0.0 (TID 8) in 88 ms on localhost (executor driver) (7/10)
+17/08/04 14:02:01 INFO TaskSetManager: Finished task 7.0 in stage 0.0 (TID 7) in 161 ms on localhost (executor driver) (8/10)
+17/08/04 14:02:01 INFO Executor: Finished task 6.0 in stage 0.0 (TID 6). 867 bytes result sent to driver
+17/08/04 14:02:01 INFO TaskSetManager: Finished task 6.0 in stage 0.0 (TID 6) in 168 ms on localhost (executor driver) (9/10)
+17/08/04 14:02:01 INFO Executor: Finished task 9.0 in stage 0.0 (TID 9). 867 bytes result sent to driver
+17/08/04 14:02:01 INFO TaskSetManager: Finished task 9.0 in stage 0.0 (TID 9) in 26 ms on localhost (executor driver) (10/10)
+17/08/04 14:02:01 INFO TaskSchedulerImpl: Removed TaskSet 0.0, whose tasks have all completed, from pool 
+17/08/04 14:02:01 INFO DAGScheduler: ResultStage 0 (reduce at SparkPi.scala:38) finished in 0.718 s
+17/08/04 14:02:01 INFO DAGScheduler: Job 0 finished: reduce at SparkPi.scala:38, took 1.031652 s
+Pi is roughly 3.137935137935138
+17/08/04 14:02:01 INFO SparkUI: Stopped Spark web UI at http://192.168.1.163:4040
+17/08/04 14:02:01 INFO MapOutputTrackerMasterEndpoint: MapOutputTrackerMasterEndpoint stopped!
+17/08/04 14:02:01 INFO MemoryStore: MemoryStore cleared
+17/08/04 14:02:01 INFO BlockManager: BlockManager stopped
+17/08/04 14:02:01 INFO BlockManagerMaster: BlockManagerMaster stopped
+17/08/04 14:02:01 INFO OutputCommitCoordinator$OutputCommitCoordinatorEndpoint: OutputCommitCoordinator stopped!
+17/08/04 14:02:01 INFO SparkContext: Successfully stopped SparkContext
+17/08/04 14:02:01 INFO ShutdownHookManager: Shutdown hook called
+17/08/04 14:02:01 INFO ShutdownHookManager: Deleting directory /private/var/folders/rt/nskttm3s6ys1w3gvm07bg0700000gp/T/spark-1b7fc7ff-e79a-4325-b2a5-5527c817aeef
+DIGI-LBurgess-6:spark-2.2.0-bin-hadoop2.7 lucieburgess$ ./bin/run-example LocalPi 10
+Pi is roughly 3.14392
+DIGI-LBurgess-6:spark-2.2.0-bin-hadoop2.7 lucieburgess$ ./bin/run-example SparkPi 10
+Using Spark's default log4j profile: org/apache/spark/log4j-defaults.properties
+17/08/04 14:21:21 INFO SparkContext: Running Spark version 2.2.0
+17/08/04 14:21:22 WARN NativeCodeLoader: Unable to load native-hadoop library for your platform... using builtin-java classes where applicable
+17/08/04 14:21:22 INFO SparkContext: Submitted application: Spark Pi
+17/08/04 14:21:22 INFO SecurityManager: Changing view acls to: lucieburgess
+17/08/04 14:21:22 INFO SecurityManager: Changing modify acls to: lucieburgess
+17/08/04 14:21:22 INFO SecurityManager: Changing view acls groups to: 
+17/08/04 14:21:22 INFO SecurityManager: Changing modify acls groups to: 
+17/08/04 14:21:22 INFO SecurityManager: SecurityManager: authentication disabled; ui acls disabled; users  with view permissions: Set(lucieburgess); groups with view permissions: Set(); users  with modify permissions: Set(lucieburgess); groups with modify permissions: Set()
+17/08/04 14:21:22 INFO Utils: Successfully started service 'sparkDriver' on port 50246.
+17/08/04 14:21:22 INFO SparkEnv: Registering MapOutputTracker
+17/08/04 14:21:22 INFO SparkEnv: Registering BlockManagerMaster
+17/08/04 14:21:22 INFO BlockManagerMasterEndpoint: Using org.apache.spark.storage.DefaultTopologyMapper for getting topology information
+17/08/04 14:21:22 INFO BlockManagerMasterEndpoint: BlockManagerMasterEndpoint up
+17/08/04 14:21:22 INFO DiskBlockManager: Created local directory at /private/var/folders/rt/nskttm3s6ys1w3gvm07bg0700000gp/T/blockmgr-c79d91b3-a235-4ad4-98b9-bc0699a32bbf
+17/08/04 14:21:22 INFO MemoryStore: MemoryStore started with capacity 366.3 MB
+17/08/04 14:21:23 INFO SparkEnv: Registering OutputCommitCoordinator
+17/08/04 14:21:23 INFO Utils: Successfully started service 'SparkUI' on port 4040.
+17/08/04 14:21:23 INFO SparkUI: Bound SparkUI to 0.0.0.0, and started at http://192.168.1.163:4040
+17/08/04 14:21:23 INFO SparkContext: Added JAR file:/Applications/spark-2.2.0-bin-hadoop2.7/examples/jars/scopt_2.11-3.3.0.jar at spark://192.168.1.163:50246/jars/scopt_2.11-3.3.0.jar with timestamp 1501852883361
+17/08/04 14:21:23 INFO SparkContext: Added JAR file:/Applications/spark-2.2.0-bin-hadoop2.7/examples/jars/spark-examples_2.11-2.2.0.jar at spark://192.168.1.163:50246/jars/spark-examples_2.11-2.2.0.jar with timestamp 1501852883363
+17/08/04 14:21:23 INFO Executor: Starting executor ID driver on host localhost
+17/08/04 14:21:23 INFO Utils: Successfully started service 'org.apache.spark.network.netty.NettyBlockTransferService' on port 50247.
+17/08/04 14:21:23 INFO NettyBlockTransferService: Server created on 192.168.1.163:50247
+17/08/04 14:21:23 INFO BlockManager: Using org.apache.spark.storage.RandomBlockReplicationPolicy for block replication policy
+17/08/04 14:21:23 INFO BlockManagerMaster: Registering BlockManager BlockManagerId(driver, 192.168.1.163, 50247, None)
+17/08/04 14:21:23 INFO BlockManagerMasterEndpoint: Registering block manager 192.168.1.163:50247 with 366.3 MB RAM, BlockManagerId(driver, 192.168.1.163, 50247, None)
+17/08/04 14:21:23 INFO BlockManagerMaster: Registered BlockManager BlockManagerId(driver, 192.168.1.163, 50247, None)
+17/08/04 14:21:23 INFO BlockManager: Initialized BlockManager: BlockManagerId(driver, 192.168.1.163, 50247, None)
+17/08/04 14:21:23 INFO SharedState: Setting hive.metastore.warehouse.dir ('null') to the value of spark.sql.warehouse.dir ('file:/Applications/spark-2.2.0-bin-hadoop2.7/spark-warehouse/').
+17/08/04 14:21:23 INFO SharedState: Warehouse path is 'file:/Applications/spark-2.2.0-bin-hadoop2.7/spark-warehouse/'.
+17/08/04 14:21:25 INFO StateStoreCoordinatorRef: Registered StateStoreCoordinator endpoint
+17/08/04 14:21:25 INFO SparkContext: Starting job: reduce at SparkPi.scala:38
+17/08/04 14:21:25 INFO DAGScheduler: Got job 0 (reduce at SparkPi.scala:38) with 10 output partitions
+17/08/04 14:21:25 INFO DAGScheduler: Final stage: ResultStage 0 (reduce at SparkPi.scala:38)
+17/08/04 14:21:25 INFO DAGScheduler: Parents of final stage: List()
+17/08/04 14:21:25 INFO DAGScheduler: Missing parents: List()
+17/08/04 14:21:25 INFO DAGScheduler: Submitting ResultStage 0 (MapPartitionsRDD[1] at map at SparkPi.scala:34), which has no missing parents
+17/08/04 14:21:25 INFO MemoryStore: Block broadcast_0 stored as values in memory (estimated size 1832.0 B, free 366.3 MB)
+17/08/04 14:21:25 INFO MemoryStore: Block broadcast_0_piece0 stored as bytes in memory (estimated size 1172.0 B, free 366.3 MB)
+17/08/04 14:21:25 INFO BlockManagerInfo: Added broadcast_0_piece0 in memory on 192.168.1.163:50247 (size: 1172.0 B, free: 366.3 MB)
+17/08/04 14:21:25 INFO SparkContext: Created broadcast 0 from broadcast at DAGScheduler.scala:1006
+17/08/04 14:21:25 INFO DAGScheduler: Submitting 10 missing tasks from ResultStage 0 (MapPartitionsRDD[1] at map at SparkPi.scala:34) (first 15 tasks are for partitions Vector(0, 1, 2, 3, 4, 5, 6, 7, 8, 9))
+17/08/04 14:21:25 INFO TaskSchedulerImpl: Adding task set 0.0 with 10 tasks
+17/08/04 14:21:25 INFO TaskSetManager: Starting task 0.0 in stage 0.0 (TID 0, localhost, executor driver, partition 0, PROCESS_LOCAL, 4825 bytes)
+17/08/04 14:21:25 INFO TaskSetManager: Starting task 1.0 in stage 0.0 (TID 1, localhost, executor driver, partition 1, PROCESS_LOCAL, 4825 bytes)
+17/08/04 14:21:25 INFO TaskSetManager: Starting task 2.0 in stage 0.0 (TID 2, localhost, executor driver, partition 2, PROCESS_LOCAL, 4825 bytes)
+17/08/04 14:21:25 INFO TaskSetManager: Starting task 3.0 in stage 0.0 (TID 3, localhost, executor driver, partition 3, PROCESS_LOCAL, 4825 bytes)
+17/08/04 14:21:25 INFO Executor: Running task 2.0 in stage 0.0 (TID 2)
+17/08/04 14:21:25 INFO Executor: Running task 0.0 in stage 0.0 (TID 0)
+17/08/04 14:21:25 INFO Executor: Running task 1.0 in stage 0.0 (TID 1)
+17/08/04 14:21:25 INFO Executor: Running task 3.0 in stage 0.0 (TID 3)
+17/08/04 14:21:25 INFO Executor: Fetching spark://192.168.1.163:50246/jars/scopt_2.11-3.3.0.jar with timestamp 1501852883361
+17/08/04 14:21:25 INFO TransportClientFactory: Successfully created connection to /192.168.1.163:50246 after 44 ms (0 ms spent in bootstraps)
+17/08/04 14:21:25 INFO Utils: Fetching spark://192.168.1.163:50246/jars/scopt_2.11-3.3.0.jar to /private/var/folders/rt/nskttm3s6ys1w3gvm07bg0700000gp/T/spark-dccb6497-e05d-4a85-b551-65fb99446f4e/userFiles-dc339ace-d4df-404c-a9c0-d81735d9777d/fetchFileTemp6903938358820470799.tmp
+17/08/04 14:21:26 INFO Executor: Adding file:/private/var/folders/rt/nskttm3s6ys1w3gvm07bg0700000gp/T/spark-dccb6497-e05d-4a85-b551-65fb99446f4e/userFiles-dc339ace-d4df-404c-a9c0-d81735d9777d/scopt_2.11-3.3.0.jar to class loader
+17/08/04 14:21:26 INFO Executor: Fetching spark://192.168.1.163:50246/jars/spark-examples_2.11-2.2.0.jar with timestamp 1501852883363
+17/08/04 14:21:26 INFO Utils: Fetching spark://192.168.1.163:50246/jars/spark-examples_2.11-2.2.0.jar to /private/var/folders/rt/nskttm3s6ys1w3gvm07bg0700000gp/T/spark-dccb6497-e05d-4a85-b551-65fb99446f4e/userFiles-dc339ace-d4df-404c-a9c0-d81735d9777d/fetchFileTemp768376435650466270.tmp
+17/08/04 14:21:26 INFO Executor: Adding file:/private/var/folders/rt/nskttm3s6ys1w3gvm07bg0700000gp/T/spark-dccb6497-e05d-4a85-b551-65fb99446f4e/userFiles-dc339ace-d4df-404c-a9c0-d81735d9777d/spark-examples_2.11-2.2.0.jar to class loader
+17/08/04 14:21:26 INFO Executor: Finished task 2.0 in stage 0.0 (TID 2). 824 bytes result sent to driver
+17/08/04 14:21:26 INFO TaskSetManager: Starting task 4.0 in stage 0.0 (TID 4, localhost, executor driver, partition 4, PROCESS_LOCAL, 4825 bytes)
+17/08/04 14:21:26 INFO Executor: Finished task 1.0 in stage 0.0 (TID 1). 824 bytes result sent to driver
+17/08/04 14:21:26 INFO TaskSetManager: Starting task 5.0 in stage 0.0 (TID 5, localhost, executor driver, partition 5, PROCESS_LOCAL, 4825 bytes)
+17/08/04 14:21:26 INFO Executor: Running task 5.0 in stage 0.0 (TID 5)
+17/08/04 14:21:26 INFO Executor: Running task 4.0 in stage 0.0 (TID 4)
+17/08/04 14:21:26 INFO TaskSetManager: Finished task 2.0 in stage 0.0 (TID 2) in 496 ms on localhost (executor driver) (1/10)
+17/08/04 14:21:26 INFO TaskSetManager: Finished task 1.0 in stage 0.0 (TID 1) in 502 ms on localhost (executor driver) (2/10)
+17/08/04 14:21:26 INFO Executor: Finished task 3.0 in stage 0.0 (TID 3). 824 bytes result sent to driver
+17/08/04 14:21:26 INFO TaskSetManager: Starting task 6.0 in stage 0.0 (TID 6, localhost, executor driver, partition 6, PROCESS_LOCAL, 4825 bytes)
+17/08/04 14:21:26 INFO Executor: Running task 6.0 in stage 0.0 (TID 6)
+17/08/04 14:21:26 INFO TaskSetManager: Finished task 3.0 in stage 0.0 (TID 3) in 511 ms on localhost (executor driver) (3/10)
+17/08/04 14:21:26 INFO Executor: Finished task 0.0 in stage 0.0 (TID 0). 824 bytes result sent to driver
+17/08/04 14:21:26 INFO TaskSetManager: Starting task 7.0 in stage 0.0 (TID 7, localhost, executor driver, partition 7, PROCESS_LOCAL, 4825 bytes)
+17/08/04 14:21:26 INFO TaskSetManager: Finished task 0.0 in stage 0.0 (TID 0) in 548 ms on localhost (executor driver) (4/10)
+17/08/04 14:21:26 INFO Executor: Running task 7.0 in stage 0.0 (TID 7)
+17/08/04 14:21:26 INFO Executor: Finished task 6.0 in stage 0.0 (TID 6). 867 bytes result sent to driver
+17/08/04 14:21:26 INFO TaskSetManager: Starting task 8.0 in stage 0.0 (TID 8, localhost, executor driver, partition 8, PROCESS_LOCAL, 4825 bytes)
+17/08/04 14:21:26 INFO Executor: Running task 8.0 in stage 0.0 (TID 8)
+17/08/04 14:21:26 INFO TaskSetManager: Finished task 6.0 in stage 0.0 (TID 6) in 33 ms on localhost (executor driver) (5/10)
+17/08/04 14:21:26 INFO Executor: Finished task 8.0 in stage 0.0 (TID 8). 824 bytes result sent to driver
+17/08/04 14:21:26 INFO TaskSetManager: Starting task 9.0 in stage 0.0 (TID 9, localhost, executor driver, partition 9, PROCESS_LOCAL, 4825 bytes)
+17/08/04 14:21:26 INFO Executor: Running task 9.0 in stage 0.0 (TID 9)
+17/08/04 14:21:26 INFO TaskSetManager: Finished task 8.0 in stage 0.0 (TID 8) in 45 ms on localhost (executor driver) (6/10)
+17/08/04 14:21:26 INFO Executor: Finished task 4.0 in stage 0.0 (TID 4). 867 bytes result sent to driver
+17/08/04 14:21:26 INFO Executor: Finished task 5.0 in stage 0.0 (TID 5). 824 bytes result sent to driver
+17/08/04 14:21:26 INFO TaskSetManager: Finished task 4.0 in stage 0.0 (TID 4) in 108 ms on localhost (executor driver) (7/10)
+17/08/04 14:21:26 INFO TaskSetManager: Finished task 5.0 in stage 0.0 (TID 5) in 107 ms on localhost (executor driver) (8/10)
+17/08/04 14:21:26 INFO Executor: Finished task 7.0 in stage 0.0 (TID 7). 824 bytes result sent to driver
+17/08/04 14:21:26 INFO TaskSetManager: Finished task 7.0 in stage 0.0 (TID 7) in 91 ms on localhost (executor driver) (9/10)
+17/08/04 14:21:26 INFO Executor: Finished task 9.0 in stage 0.0 (TID 9). 824 bytes result sent to driver
+17/08/04 14:21:26 INFO TaskSetManager: Finished task 9.0 in stage 0.0 (TID 9) in 29 ms on localhost (executor driver) (10/10)
+17/08/04 14:21:26 INFO TaskSchedulerImpl: Removed TaskSet 0.0, whose tasks have all completed, from pool 
+17/08/04 14:21:26 INFO DAGScheduler: ResultStage 0 (reduce at SparkPi.scala:38) finished in 0.669 s
+17/08/04 14:21:26 INFO DAGScheduler: Job 0 finished: reduce at SparkPi.scala:38, took 1.025908 s
+Pi is roughly 3.142027142027142
+17/08/04 14:21:26 INFO SparkUI: Stopped Spark web UI at http://192.168.1.163:4040
+17/08/04 14:21:26 INFO MapOutputTrackerMasterEndpoint: MapOutputTrackerMasterEndpoint stopped!
+17/08/04 14:21:26 INFO MemoryStore: MemoryStore cleared
+17/08/04 14:21:26 INFO BlockManager: BlockManager stopped
+17/08/04 14:21:26 INFO BlockManagerMaster: BlockManagerMaster stopped
+17/08/04 14:21:26 INFO OutputCommitCoordinator$OutputCommitCoordinatorEndpoint: OutputCommitCoordinator stopped!
+17/08/04 14:21:26 INFO SparkContext: Successfully stopped SparkContext
+17/08/04 14:21:26 INFO ShutdownHookManager: Shutdown hook called
+17/08/04 14:21:26 INFO ShutdownHookManager: Deleting directory /private/var/folders/rt/nskttm3s6ys1w3gvm07bg0700000gp/T/spark-dccb6497-e05d-4a85-b551-65fb99446f4e
+DIGI-LBurgess-6:spark-2.2.0-bin-hadoop2.7 lucieburgess$ 

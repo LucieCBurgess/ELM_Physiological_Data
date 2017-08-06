@@ -1,8 +1,10 @@
+package tutorials
+
 /**
   * Created by lucieburgess on 03/08/2017.
   */
 
-import org.apache.spark.{SparkContext, SparkConf}
+import org.apache.spark.{SparkConf, SparkContext}
 
 object wordCount {
 
