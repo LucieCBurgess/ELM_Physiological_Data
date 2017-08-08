@@ -27,6 +27,7 @@ import org.apache.spark.sql.SparkSession
 // FIXME - not unit tested
 // FIXME - configurations need to be set at some point
 
+
 case class mHealthUser1(acc_Chest_X: Double, acc_Chest_Y: Double, acc_Chest_Z: Double,
                         ecg_1: Double, ecg_2: Double,
                         acc_Ankle_X: Double, acc_Ankle_Y: Double, acc_Ankle_Z: Double,
@@ -39,13 +40,14 @@ case class mHealthUser1(acc_Chest_X: Double, acc_Chest_Y: Double, acc_Chest_Z: D
 
 object dataLoad {
 
-  val spark = SparkSession
-    .builder()
-    .appName("Loading data")
-    .config("spark.some.config.option", "some-value")
-    .getOrCreate()
+  def main(args: Array[String]) {
 
-  def build() :Unit = {
+    val spark = SparkSession
+      .builder
+      .appName("Loading data")
+      .master("local[*]")
+      .config("spark.some.config.option", "some-value")
+      .getOrCreate()
 
     import spark.implicits._
 
@@ -60,35 +62,11 @@ object dataLoad {
         attributes(24).toInt))
       .toDF()
 
-    }
+    mHealthUser1DF.show(2, 0)
+
+  }
 }
 
-
-
-
-// def main(args: Array[String]): Unit = {
-// val conf = new SparkConf() // defining Spark configuration object
-// .setMaster("local[*]") // set SparkMaster as local
-// .setAppName("Loading data")
-// .set("spark.executor.memory", "4g")
-
-// val sc = new SparkContext(conf)
-
-// sc.textFile method creates a distributed RDD
-// val mHealthUser1File = sc.textFile("/Users/lucieburgess/Documents/Birkbeck/MSc_Project/MHEALTHDATASET")
-
-// val mHealthUser1FileNext = mHealthUser1File.map(x => x.split(" ")).map {
-//   case Array(acc_Chest_X, acc_Chest_Y, acc_Chest_Z, ecg_1, ecg_2,
-//   acc_LAnkle_X, acc_LAnkle_Y, acc_LAnkle_Z, gyro_Ankle_X, gyro_Ankle_Y, gyro_Ankle_Z,
-//   magno_Ankle_X, magno_Ankle_Y, magno_Ankle_Z, acc_Arm_X, acc_Arm_Y, acc_Arm_Z,
-//   gyro_Arm_X, gyro_Arm_Y, gyro_Arm_Z, magno_Arm_X, magno_Arm_Y, magno_Arm_Z, activityLabel) =>
-//   mHealthUser1(acc_Chest_X.toDouble, acc_Chest_Y.toDouble, acc_Chest_Z.toDouble, ecg_1.toDouble, ecg_2.toDouble,
-//   acc_LAnkle_X.toDouble, acc_LAnkle_Y.toDouble, acc_LAnkle_Z.toDouble, gyro_Ankle_X.toDouble, gyro_Ankle_Y.toDouble, gyro_Ankle_Z.toDouble,
-//  magno_Ankle_X.toDouble, magno_Ankle_Y.toDouble, magno_Ankle_Z.toDouble, acc_Arm_X.toDouble, acc_Arm_Y.toDouble, acc_Arm_Z.toDouble,
-//  gyro_Arm_X.toDouble, gyro_Arm_Y.toDouble, gyro_Arm_Z.toDouble, magno_Arm_X.toDouble, magno_Arm_Y.toDouble, magno_Arm_Z.toDouble,
-//   activityLabel.toInt)
-
-// mHealthUser1FileNext.toDF()
 
 
 

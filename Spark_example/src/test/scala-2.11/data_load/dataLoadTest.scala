@@ -1,38 +1,44 @@
 package data_load
 
-import org.apache.spark.{SparkConf, SparkContext}
+//import org.apache.spark.{SparkConf, SparkContext}
 import org.apache.spark.sql.SparkSession
-import org.scalatest.{BeforeAndAfter, FlatSpec, Matchers}
+import org.apache.spark.sql.SparkSession.Builder
+import org.scalatest.{BeforeAndAfterEach, FlatSpec, FunSuite, Matchers}
 
 /**
   * Created by lucieburgess on 06/08/2017.
   * FIXME - incomplete
   */
-class dataLoadTest extends FlatSpec with Matchers with BeforeAndAfter {
 
-    private val master = "local[2]"
-    private val appName = "data_load_testing"
-    private var sc: SparkContext = _
+case class Person(name: String, age: Int)
 
-    before {
-      val conf = new SparkConf().setMaster(master).setAppName(appName)
+class dataLoadTest extends FunSuite with Matchers with BeforeAndAfterEach {
+
+  private val master = "local[*]"
+  private val appName = "data_load_testing"
+
+  var spark: SparkSession = _
+
+  override def beforeEach() {
+    spark = new SparkSession.Builder().appName(appName).master(master).getOrCreate()
+  }
+
+  test("Creating dataframe should produce DataFrame of correct size") {
+
+    val sQLContext = spark.sqlContext
+    import sQLContext.implicits._
+
+    val df = spark.sparkContext
+      .textFile("/Applications/spark-2.2.0-bin-hadoop2.7/examples/src/main/resources/people.txt")
+      .map(_.split(","))
+      .map(attributes => Person(attributes(0), attributes(1).trim.toInt))
+      .toDF()
+
+      assert(df.count() == 3)
+      assert(df.take(1)(0)(0).equals("Michael"))
     }
 
-    "Running build()" should "create a dataframe with correct number of columns" in {
-
-      val spark = new SparkSession.Builder().appName(appName).getOrCreate()
-      case class Record(columnX: Double, columnY: Double, columnZ: Int, columnW: String)
-      import spark.implicits._
-
-      val df = spark.createDataFrame(Seq(1,2,3).map(Record(_)))
-      assert(df.count()>0)
-
-    }
-
-
-    after {
-      if (sc != null) {
-        sc.stop()
-      }
-    }
+  override def afterEach() = {
+    spark.stop()
+  }
 }
