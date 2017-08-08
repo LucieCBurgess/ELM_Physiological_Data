@@ -22,11 +22,9 @@ import org.apache.spark.sql.SparkSession
   * So we define the mHealth_subject1.txt file schema using a case class and infer it using reflection, as shown below
   */
 
-// FIXME - not completed
 // FIXME - need to add a subjectID and a rowID to the record
-// FIXME - not unit tested
+// FIXME - unit tested in dataLoadTest.scala but unit test needs to be applied to this dataset explicitly
 // FIXME - configurations need to be set at some point
-
 
 case class mHealthUser1(acc_Chest_X: Double, acc_Chest_Y: Double, acc_Chest_Z: Double,
                         ecg_1: Double, ecg_2: Double,
@@ -53,17 +51,22 @@ object dataLoad {
 
     val mHealthUser1DF = spark.sparkContext
       .textFile("/Users/lucieburgess/Documents/Birkbeck/MSc_Project/MHEALTHDATASET/mHealth_subject1.txt")
-      .map(_.split(" "))
-      .map(attributes => mHealthUser1(attributes(0).toDouble, attributes(1).toDouble, attributes(3).toDouble, attributes(4).toDouble,
-        attributes(5).toDouble, attributes(6).toDouble, attributes(7).toDouble, attributes(8).toDouble,
-        attributes(9).toDouble, attributes(10).toDouble, attributes(11).toDouble, attributes(12).toDouble, attributes(13).toDouble,
-        attributes(14).toDouble, attributes(15).toDouble, attributes(16).toDouble, attributes(17).toDouble, attributes(18).toDouble,
-        attributes(19).toDouble, attributes(20).toDouble, attributes(21).toDouble, attributes(22).toDouble, attributes(23).toDouble,
-        attributes(24).toInt))
+      .map(_.split("\\t"))
+      .map(attributes => mHealthUser1(attributes(0).toDouble, attributes(1).toDouble, attributes(2).toDouble,
+                                      attributes(3).toDouble, attributes(4).toDouble,
+                                      attributes(5).toDouble, attributes(6).toDouble, attributes(7).toDouble,
+                                      attributes(8).toDouble, attributes(9).toDouble, attributes(10).toDouble,
+                                      attributes(11).toDouble, attributes(12).toDouble, attributes(13).toDouble,
+                                      attributes(14).toDouble, attributes(15).toDouble, attributes(16).toDouble,
+                                      attributes(17).toDouble, attributes(18).toDouble, attributes(19).toDouble,
+                                      attributes(20).toDouble, attributes(21).toDouble, attributes(22).toDouble,
+                                      attributes(23).toInt))
       .toDF()
 
     mHealthUser1DF.show(2, 0)
+    println("The number of rows in the dataset is " + mHealthUser1DF.count())
 
+    spark.stop()
   }
 }
 
