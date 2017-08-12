@@ -4,7 +4,8 @@ import org.apache.spark.sql.SparkSession
 
 /**
   * Created by lucieburgess on 04/08/2017.
-  * Creates a Spark dataframe for the mHealth dataset for user1.
+  * Creates a Spark dataframe
+  * for the mHealth dataset for user1.
   * All data in the mHealth dataset are doubles apart from activity_Label which is an integer
   * We will create a separate case class for each subject, create a data frame for each,
   * and then combine the dataframes to get a single dataframe for all users
@@ -65,6 +66,11 @@ object dataLoad {
 
     mHealthUser1DF.show(2, 0)
     println("The number of rows in the dataset is " + mHealthUser1DF.count())
+
+    mHealthUser1DF.groupBy("activityLabel").count().show()
+
+    val mHealthUser1Labelled = mHealthUser1DF.filter($"activityLabel" =!= 0)
+    println("The number of labelled rows in the dataset is " + mHealthUser1Labelled.count())
 
     spark.stop()
   }

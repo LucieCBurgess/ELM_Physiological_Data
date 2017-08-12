@@ -23,7 +23,7 @@ class dataLoadTest extends FunSuite with Matchers with BeforeAndAfterEach {
     spark = new SparkSession.Builder().appName(appName).master(master).getOrCreate()
   }
 
-  test("Creating dataframe should produce DataFrame of correct size") {
+  test("Creating Dataframe should produce Dataframe of correct size") {
 
     val sQLContext = spark.sqlContext
     import sQLContext.implicits._
@@ -34,9 +34,10 @@ class dataLoadTest extends FunSuite with Matchers with BeforeAndAfterEach {
       .map(attributes => Person(attributes(0), attributes(1).trim.toInt))
       .toDF()
 
-      assert(df.count() == 3)
-      assert(df.take(1)(0)(0).equals("Michael"))
-    }
+    assert(df.count() == 3)
+    assert(df.take(1)(0)(0).equals("Michael"))
+    assert(df.filter($"age" > 21).count() == 2)
+  }
 
   override def afterEach() = {
     spark.stop()
