@@ -1,17 +1,17 @@
 package data_load
 
-//import org.apache.spark.{SparkConf, SparkContext}
-import org.apache.spark.sql.SparkSession
-import org.scalatest.{BeforeAndAfterEach, FlatSpec, FunSuite, Matchers}
-
 /**
-  * Created by lucieburgess on 06/08/2017.
-  * FIXME - incomplete
+  * Created by lucieburgess on 13/08/2017.
+  * Uses person.txt in the Spark/scala/resources folder as a simple test case to test loading and basic manipulation
+  * of data from a single file
   */
+
+import org.apache.spark.sql.SparkSession
+import org.scalatest.{BeforeAndAfterEach, FunSuite, Matchers}
 
 case class Person(name: String, age: Int)
 
-class dataLoadTest extends FunSuite with Matchers with BeforeAndAfterEach {
+class SingleDataLoadTest extends FunSuite with Matchers with BeforeAndAfterEach {
 
   private val master = "local[*]"
   private val appName = "data_load_testing"
@@ -28,10 +28,10 @@ class dataLoadTest extends FunSuite with Matchers with BeforeAndAfterEach {
     import sQLContext.implicits._
 
     val df = spark.sparkContext
-      .textFile("/Applications/spark-2.2.0-bin-hadoop2.7/examples/src/main/resources/people.txt")
-      .map(_.split(","))
-      .map(attributes => Person(attributes(0), attributes(1).trim.toInt))
-      .toDF()
+        .textFile("/Applications/spark-2.2.0-bin-hadoop2.7/examples/src/main/resources/people.txt")
+        .map(_.split(","))
+        .map(attributes => Person(attributes(0), attributes(1).trim.toInt))
+        .toDF()
 
     assert(df.count() == 3)
     assertResult("Andy") {
@@ -47,3 +47,5 @@ class dataLoadTest extends FunSuite with Matchers with BeforeAndAfterEach {
     spark.stop()
   }
 }
+
+
