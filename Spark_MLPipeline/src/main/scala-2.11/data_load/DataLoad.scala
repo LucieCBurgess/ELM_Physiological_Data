@@ -25,16 +25,6 @@ import org.apache.spark.sql.SparkSession
 // FIXME - need to add a subjectID and a rowID to the record
 // FIXME - configurations need to be set at some point - within val spark .config("spark.some.config.option", "some-value")
 
-case class mHealthUser1(acc_Chest_X: Double, acc_Chest_Y: Double, acc_Chest_Z: Double,
-                        ecg_1: Double, ecg_2: Double,
-                        acc_Ankle_X: Double, acc_Ankle_Y: Double, acc_Ankle_Z: Double,
-                        gyro_Ankle_X: Double, gyro_Ankle_Y: Double, gyro_Ankle_Z: Double,
-                        magno_Ankle_X: Double, magno_Ankle_Y: Double, magno_Ankle_Z: Double,
-                        acc_Arm_X: Double, acc_Arm_Y: Double, acc_Arm_Z: Double,
-                        gyro_Arm_X: Double, gyro_Arm_Y: Double, gyro_Arm_Z: Double,
-                        magno_Arm_X: Double, magno_Arm_Y: Double, magno_Arm_Z: Double,
-                        activityLabel: Int)
-
 object DataLoad {
 
   def main(args: Array[String]) {
@@ -50,7 +40,7 @@ object DataLoad {
     val mHealthUser1DF = spark.sparkContext
       .textFile("/Users/lucieburgess/Documents/Birkbeck/MSc_Project/MHEALTHDATASET/mHealth_subject1.txt")
       .map(_.split("\\t"))
-      .map(attributes => mHealthUser1(attributes(0).toDouble, attributes(1).toDouble, attributes(2).toDouble,
+      .map(attributes => mHealthUser(attributes(0).toDouble, attributes(1).toDouble, attributes(2).toDouble,
         attributes(3).toDouble, attributes(4).toDouble,
         attributes(5).toDouble, attributes(6).toDouble, attributes(7).toDouble,
         attributes(8).toDouble, attributes(9).toDouble, attributes(10).toDouble,
