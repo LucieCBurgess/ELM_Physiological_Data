@@ -98,6 +98,26 @@ class MultipleDataLoadTest extends FunSuite with BeforeAndAfterEach {
       result.collect()(0)
     }
 
+    /** write to output tab delimited csv file */
+    //mHealthIndexed.write.format("csv").option("delimiter","\\t").option("path", "/Users/lucieburgess/Documents/Birkbeck/MSc_Project/MHEALTHDATASET/TestFolder").saveAsTable("mHealthIndexed")
+
+    /** Check data loads again */
+    //FIXME - doesn't work
+    val mHealthAllDF = spark.sparkContext
+      .textFile("/Users/lucieburgess/Documents/Birkbeck/MSc_Project/MHEALTHDATASET/TestFolder/mHealthIndexed.csv")
+      .map(_.split("\\t"))
+      .map(attributes => mHealthUser(attributes(0).toDouble, attributes(1).toDouble, attributes(2).toDouble,
+        attributes(3).toDouble, attributes(4).toDouble,
+        attributes(5).toDouble, attributes(6).toDouble, attributes(7).toDouble,
+        attributes(8).toDouble, attributes(9).toDouble, attributes(10).toDouble,
+        attributes(11).toDouble, attributes(12).toDouble, attributes(13).toDouble,
+        attributes(14).toDouble, attributes(15).toDouble, attributes(16).toDouble,
+        attributes(17).toDouble, attributes(18).toDouble, attributes(19).toDouble,
+        attributes(20).toDouble, attributes(21).toDouble, attributes(22).toDouble,
+        attributes(23).toInt))
+      .toDF()
+
+    mHealthAllDF.show()
   }
 
   override def afterEach() = {
