@@ -9,21 +9,11 @@ import org.apache.spark.sql.{Dataset, SparkSession}
 import org.apache.spark.sql.functions._
 import org.scalatest.{BeforeAndAfterEach, FunSuite}
 
-class MultipleDataLoadTest extends FunSuite with BeforeAndAfterEach {
+class MultipleDataLoadTest extends FunSuite with BeforeAndAfterEach with SparkSessionTestWrapper {
 
-  private val master = "local[*]"
-  private val appName = "multiple_data_load_test"
-
-  var spark: SparkSession = _
-
-  override def beforeEach() {
-    spark = new SparkSession.Builder().appName(appName).master(master).getOrCreate()
-  }
+  import spark.implicits._
 
   test("[01] Loading data from more than one file") {
-
-    val sqlContext = spark.sqlContext
-    import sqlContext.implicits._
 
     val mHealthUser1DF = spark.sparkContext
       .textFile("/Users/lucieburgess/Documents/Birkbeck/MSc_Project/MHEALTHDATASET/firstline_subject1.txt")
@@ -73,7 +63,4 @@ class MultipleDataLoadTest extends FunSuite with BeforeAndAfterEach {
 
   }
 
-  override def afterEach() = {
-    spark.stop()
-  }
 }
