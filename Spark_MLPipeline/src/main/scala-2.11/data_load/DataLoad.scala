@@ -75,6 +75,7 @@ object DataLoad {
     completeDF.groupBy("activityLabel").count().show()
 
     //FIXME add rowID using monotonically increasing ID
+    //FIXME create a global temporary view
 
     spark.stop()
 
