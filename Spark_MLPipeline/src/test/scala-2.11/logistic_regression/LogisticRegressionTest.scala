@@ -5,12 +5,14 @@ package logistic_regression
   */
 
 import data_load.mHealthUser
-import org.apache.spark.ml.Pipeline
 import org.apache.spark.ml.classification.{LogisticRegression, LogisticRegressionModel}
 import scala.collection.mutable
 import org.apache.spark.sql.{DataFrame, SparkSession}
 import org.apache.spark.ml.feature.{VectorAssembler, StringIndexer}
-import org.apache.spark.ml.{PipelineStage, Pipeline}
+import org.apache.spark.ml.{PipelineStage, Pipeline, Transformer}
+import org.apache.spark.ml.util.MetadataUtils
+import org.apache.spark.mllib.evaluation.{MulticlassMetrics}
+
 
 object LogisticRegressionTest {
 
@@ -96,14 +98,15 @@ object LogisticRegressionTest {
         attributes(23).toInt))
       .toDF()
       .filter($"activityLabel" > 0)
-      .withColumn("Label", $"(when activityLabel > 4, 1).otherwise(0)") //FIXME need to unit test this line
+      //.withColumn("Label", $"when activityLabel > 4, 1 else 0") //FIXME need to unit test this line - not currently working
       .cache()
+
+    //FIXME exception handling ... try ... catch block
 
     val Array(trainData, testData) = data.randomSplit(Array(0.5,0.5))
 
-    /** Set up the pipeline */
-    val pipeline = new mutable.ArrayBuffer[PipelineStage]()
-
+    /** Set up the pipeline stages */
+    val pipelineStages = new mutable.ArrayBuffer[PipelineStage]()
 
     //FIXME - in the real pipeline we would include a Feature Transformer step here to calculate velocity from accelerometer data
 
@@ -114,26 +117,80 @@ object LogisticRegressionTest {
 
     /** Sets the input columns as the array of features and the output column as a new column, model_features */
     val featureAssembler = new VectorAssembler().setInputCols(featureCols).setOutputCol("Model_features")
-    pipeline += featureAssembler
-    val dataWithFeatures: DataFrame = featureAssembler.transform(data) // FIXME how to add this to the pipeline
-    dataWithFeatures.show()
+    pipelineStages += featureAssembler
+    //val dataWithFeatures: DataFrame = featureAssembler.transform(data)
+    // FIXME how to add this to the pipeline - do we need to ....
+    //dataWithFeatures.show()
 
     /** Create a prediction column with StringIndexer for the output classifications */
-    val labelIndexer = new StringIndexer().setInputCol("Label").setOutputCol("Prediction")
+    val labelIndexer = new StringIndexer().setInputCol("Label").setOutputCol("predictedLabel")
+    pipelineStages += labelIndexer
 
     /** Create the classifier, set parameters for training */
+    val lr = new LogisticRegression()
+      .setFeaturesCol("Model_features")
+      .setLabelCol("Label") // Label or predicted label?
+      .setRegParam(params.regParam)
+      .setElasticNetParam(params.elasticNetParam)
+      .setMaxIter(params.maxIter)
+      .setTol(params.tol)
+      .setFitIntercept(params.fitIntercept)
+    pipelineStages += lr
 
+    /** Set the pipeline from the pipeline stages */
+    val pipeline = new Pipeline().setStages(pipelineStages.toArray)
 
+    /** Fit the pipeline */
+    val startTime = System.nanoTime()
+    val pipelineModel = pipeline.fit(trainData)
+    val elapsedTime = (System.nanoTime() - startTime) / 1e9
+    println(s"Training time: $elapsedTime seconds")
 
-    //Set up the pipeline - stage1 and stage2 are val names of the pipeline stages
-    // val pipeline = new Pipeline().setStages(stage1, stage2)
+    val lrModel = pipelineModel.stages.last.asInstanceOf[LogisticRegressionModel]
 
+    /** Print the weights and intercept for logistic regression */
+    println(s"Weights: ${lrModel.coefficients} Intercept: ${lrModel.intercept}")
+
+    println("Training data results:")
+    evaluateClassificationModel(pipelineModel, trainData, "Label")
+    println("Test data results:")
+    evaluateClassificationModel(pipelineModel, testData, "Label")
+
+    spark.stop()
+
+    // Probably mixing metaphors here - need to follow the simple breast cancer example first and then transform this to a pipeline
+    // See https://mapr.com/blog/predicting-breast-cancer-using-apache-spark-machine-learning-logistic-regression/
 
   }
 
+  /**
+    * Evaluate the given ClassificationModel on data. Print the results. Based on decision tree example
+    * @param model  Must fit ClassificationModel abstraction, with Transformers and Estimators
+    * @param df  DataFrame with "prediction" and labelColName columns
+    * @param labelColName  Name of the labelCol parameter for the model, i.e. name of the column which contains the label for the model
+    *
+    */
+  private def evaluateClassificationModel(
+                                               model: Transformer,
+                                               df: DataFrame,
+                                               labelColName: String): Unit = {
+    val fullPredictions = model.transform(df).cache()
+    val labels = fullPredictions.select(labelColName).rdd.map(_.getDouble(0))
+    val predictions = fullPredictions.select("predictedLabel").rdd.map(_.getDouble(0))
 
-
+    // FIXME - error MetadataUtils is not accessible from this place
+    // Print number of classes for reference.
+    //val numClasses = MetadataUtils.getNumClasses(fullPredictions.schema(labelColName)) match {
+    //  case Some(n) => n
+    //  case None => throw new RuntimeException(
+    //    "Unknown failure when indexing labels for classification.")
+    //}
+    val accuracy = new MulticlassMetrics(predictions.zip(labels)).accuracy
+    println(s" Accuracy $accuracy")
+    // println(s"  Accuracy ($numClasses classes): $accuracy")
   }
 
 
 }
+
+

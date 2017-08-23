@@ -30,7 +30,7 @@ class MultipleDataLoadTest extends FunSuite with BeforeAndAfterEach with SparkSe
     df
   }
 
-  test("[01] Loading data to create separate data frames") {
+  test("[02] Loading data to create separate data frames") {
 
     val mHealthUser1DF: DataFrame = createDataFrame("firstline_subject1.txt")
     val mHealthUser2DF: DataFrame = createDataFrame("firstline_subject2.txt")

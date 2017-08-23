@@ -11,7 +11,7 @@ import org.scalatest.{BeforeAndAfterEach, FunSuite, Matchers}
 
 case class Person(name: String, age: Int)
 
-class SingleDataLoadTest extends FunSuite with Matchers with BeforeAndAfterEach {
+class SingleDataLoadTest extends FunSuite with BeforeAndAfterEach {
 
   private val master = "local[*]"
   private val appName = "data_load_testing"
@@ -22,7 +22,7 @@ class SingleDataLoadTest extends FunSuite with Matchers with BeforeAndAfterEach 
     spark = new SparkSession.Builder().appName(appName).master(master).getOrCreate()
   }
 
-  test("Creating Dataframe should produce Dataframe of correct size") {
+  test("[01] Creating Dataframe should produce Dataframe of correct size") {
 
     val sQLContext = spark.sqlContext
     import sQLContext.implicits._
