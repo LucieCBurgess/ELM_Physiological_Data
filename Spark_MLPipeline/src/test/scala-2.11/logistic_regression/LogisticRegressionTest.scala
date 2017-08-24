@@ -4,7 +4,7 @@ package logistic_regression
   * Created by lucieburgess on 15/08/2017.
   */
 
-import data_load.mHealthUser
+import data_load.{DataLoadTest, SparkSessionTestWrapper}
 import org.apache.spark.ml.classification.{LogisticRegression, LogisticRegressionModel}
 
 import scala.collection.mutable
@@ -16,7 +16,7 @@ import org.apache.spark.mllib.evaluation.MulticlassMetrics
 import org.apache.spark.sql.functions.when
 
 
-object LogisticRegressionTest {
+object LogisticRegressionTest extends SparkSessionTestWrapper {
 
   case class Params(
                      dataFormat: String = "text converted to DataFrame",
@@ -74,39 +74,29 @@ object LogisticRegressionTest {
      case _ => sys.exit(1)
    }
 
-  } // end of main method
+  }
 
   def run(params: Params) :Unit = {
 
-    val spark = SparkSession.builder().appName(s"LogisticRegressionTest with $params").master("local[*]").getOrCreate()
+    //val spark = SparkSession.builder().appName(s"LogisticRegressionTest with $params").master("local[*]").getOrCreate()
 
     import spark.implicits._
 
     println(s"Logistic Regression Example from the Spark examples with some dummy data and parameters: \n$params")
 
-    //Load training and test data and cache it
-
-    val data = spark.sparkContext
-      .textFile("/Users/lucieburgess/Documents/Birkbeck/MSc_Project/MHEALTHDATASET/mHealth_subject1.txt")
-      .map(_.split("\\t"))
-      .map(attributes => mHealthUser(attributes(0).toDouble, attributes(1).toDouble, attributes(2).toDouble,
-        attributes(3).toDouble, attributes(4).toDouble,
-        attributes(5).toDouble, attributes(6).toDouble, attributes(7).toDouble,
-        attributes(8).toDouble, attributes(9).toDouble, attributes(10).toDouble,
-        attributes(11).toDouble, attributes(12).toDouble, attributes(13).toDouble,
-        attributes(14).toDouble, attributes(15).toDouble, attributes(16).toDouble,
-        attributes(17).toDouble, attributes(18).toDouble, attributes(19).toDouble,
-        attributes(20).toDouble, attributes(21).toDouble, attributes(22).toDouble,
-        attributes(23).toInt))
-      .toDF()
-      //.withColumn("Label", $"when activityLabel > 4, 1 else 0") //FIXME need to unit test this line - not currently working
-      .cache()
+    /** Load training and test data and cache it */
+    val data = DataLoadTest.createDataFrame("mHealth_subject1.txt")
 
     /** Filter for unLabelled data and add a new binary column, indexedLabel */
-    val df2 = data.filter($"activityLabel" > 0).withColumn("indexedLabel",when($"activityLabel".between(1, 3), 0).otherwise(1))
+      //FIXME how to add this step to the pipeline as a Transformer
+    val df2 = data
+        .filter($"activityLabel" > 0)
+        .withColumn("indexedLabel",when($"activityLabel".between(1, 3), 0).otherwise(1))
 
     //FIXME exception handling ... try ... catch block
 
+    /** Randomly split data into test, train with 50% split */
+      // FIXME - add this to params
     val Array(trainData, testData) = df2.randomSplit(Array(0.5,0.5))
 
     /** Set up the pipeline stages */
@@ -177,6 +167,7 @@ object LogisticRegressionTest {
   private def evaluateClassificationModel(model: Transformer, df: DataFrame, labelColName: String): Unit = {
 
     val fullPredictions = model.transform(df).cache()
+    // FIXME java.lang.ClassCastException: java.lang.Integer cannot be cast to java.lang.Double line 184
     val labels = fullPredictions.select(labelColName).rdd.map(_.getDouble(0))
     val predictions = fullPredictions.select("predictedLabel").rdd.map(_.getDouble(0))
 
