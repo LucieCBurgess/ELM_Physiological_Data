@@ -6,12 +6,14 @@ package logistic_regression
 
 import data_load.mHealthUser
 import org.apache.spark.ml.classification.{LogisticRegression, LogisticRegressionModel}
+
 import scala.collection.mutable
-import org.apache.spark.sql.{DataFrame, SparkSession}
-import org.apache.spark.ml.feature.{VectorAssembler, StringIndexer}
-import org.apache.spark.ml.{PipelineStage, Pipeline, Transformer}
+import org.apache.spark.sql.{Column, DataFrame, SparkSession}
+import org.apache.spark.ml.feature.{StringIndexer, VectorAssembler}
+import org.apache.spark.ml.{Pipeline, PipelineStage, Transformer}
 import org.apache.spark.ml.util.MetadataUtils
-import org.apache.spark.mllib.evaluation.{MulticlassMetrics}
+import org.apache.spark.mllib.evaluation.MulticlassMetrics
+import org.apache.spark.sql.functions.when
 
 
 object LogisticRegressionTest {
@@ -97,13 +99,15 @@ object LogisticRegressionTest {
         attributes(20).toDouble, attributes(21).toDouble, attributes(22).toDouble,
         attributes(23).toInt))
       .toDF()
-      .filter($"activityLabel" > 0)
       //.withColumn("Label", $"when activityLabel > 4, 1 else 0") //FIXME need to unit test this line - not currently working
       .cache()
 
+    /** Filter for unLabelled data and add a new binary column, indexedLabel */
+    val df2 = data.filter($"activityLabel" > 0).withColumn("indexedLabel",when($"activityLabel".between(1, 3), 0).otherwise(1))
+
     //FIXME exception handling ... try ... catch block
 
-    val Array(trainData, testData) = data.randomSplit(Array(0.5,0.5))
+    val Array(trainData, testData) = df2.randomSplit(Array(0.5,0.5))
 
     /** Set up the pipeline stages */
     val pipelineStages = new mutable.ArrayBuffer[PipelineStage]()
@@ -123,13 +127,13 @@ object LogisticRegressionTest {
     //dataWithFeatures.show()
 
     /** Create a prediction column with StringIndexer for the output classifications */
-    val labelIndexer = new StringIndexer().setInputCol("Label").setOutputCol("predictedLabel")
+    val labelIndexer = new StringIndexer().setInputCol("indexedLabel").setOutputCol("predictedLabel")
     pipelineStages += labelIndexer
 
     /** Create the classifier, set parameters for training */
     val lr = new LogisticRegression()
       .setFeaturesCol("Model_features")
-      .setLabelCol("Label") // Label or predicted label?
+      .setLabelCol("predictedLabel") // Label or predicted label?
       .setRegParam(params.regParam)
       .setElasticNetParam(params.elasticNetParam)
       .setMaxIter(params.maxIter)
@@ -152,9 +156,9 @@ object LogisticRegressionTest {
     println(s"Weights: ${lrModel.coefficients} Intercept: ${lrModel.intercept}")
 
     println("Training data results:")
-    evaluateClassificationModel(pipelineModel, trainData, "Label")
+    evaluateClassificationModel(pipelineModel, trainData, "indexedLabel")
     println("Test data results:")
-    evaluateClassificationModel(pipelineModel, testData, "Label")
+    evaluateClassificationModel(pipelineModel, testData, "indexedLabel")
 
     spark.stop()
 
@@ -170,10 +174,8 @@ object LogisticRegressionTest {
     * @param labelColName  Name of the labelCol parameter for the model, i.e. name of the column which contains the label for the model
     *
     */
-  private def evaluateClassificationModel(
-                                               model: Transformer,
-                                               df: DataFrame,
-                                               labelColName: String): Unit = {
+  private def evaluateClassificationModel(model: Transformer, df: DataFrame, labelColName: String): Unit = {
+
     val fullPredictions = model.transform(df).cache()
     val labels = fullPredictions.select(labelColName).rdd.map(_.getDouble(0))
     val predictions = fullPredictions.select("predictedLabel").rdd.map(_.getDouble(0))

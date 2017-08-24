@@ -14,7 +14,8 @@ class addNewColumnTest extends FunSuite with SparkSessionTestWrapper {
 
   import spark.implicits._
 
-  def createDataFrame(fileName: String) :DataFrame =  {
+  //FIXME createDataFrame method used ubiquitously so should be moved to a new class
+  def createDataFrame(fileName: String): DataFrame = {
 
     val df = spark.sparkContext
       .textFile("/Users/lucieburgess/Documents/Birkbeck/MSc_Project/MHEALTHDATASET/" + fileName)
@@ -33,65 +34,59 @@ class addNewColumnTest extends FunSuite with SparkSessionTestWrapper {
     df
   }
 
-  /**
-    * Function which adds a new column and turns labels 1-4 to Inactive (==0) and labels 5-12 to Active (==1)
-    *  @param df the DataFrame to which the new column is to be added
-    * @param column, the column of activity labels which is to be converted from mutinomial to binomial
-    * @return the new DataFrame with the added column
-    *
-    */
-  // FIXME - this is not adding a new column, just replacing the existing column
-  def createBinaryColumn(df: DataFrame, column: String): DataFrame = {
+  val mHealthUser1DF: DataFrame = createDataFrame("mHealth_subject1.txt")
 
-    val newCol: Column = when(col(column).equalTo(1 | 2 | 3 | 4), 0).otherwise(1).alias("indexedLabel")
-    val df2: DataFrame = df.withColumn(column, newCol)
-    df2
-  }
+  /** Test to add a new column to the dataframe with indexed label (0 or 1) from activityLabel (1-3, 4-12) */
+  test("[06] Adding a new column to the DataFrame with indexedLabel") {
 
-  /**
-    * //FIXME - this is not working as expected. See results from running the test
-    * A helper function to sum the number of activityLabels within a given range to use in testing
-    * @param df the DataFrame to be operated on
-    * @return a new DataFrame with sum of number of records with label 1-4 and number of records with label 5-12
-    */
-
-  def createRangeActivityLabels(df: DataFrame): Unit = {
-
-    val activityList: List[(Int, Int)] = List((1, 3), (4, 12))
-
-    val exprs: List[Column] = activityList.map {
-      case (x, y) => {
-        val newLabel = s"${x}_${y}"
-        sum(when($"activityLabel".between(x, y), 0).otherwise(1)).alias(newLabel)
-      }
-    }
-
-    val df2: DataFrame = df.groupBy($"activityLabel").agg(exprs.head, exprs.tail: _*)
-    val indexedLabelSums = df2.agg(sum(exprs.head), sum(exprs(1))).first
-
-    println(s"************* Number of Inactive Labels: ${indexedLabelSums.getAs[Int](exprs.head.toString())} " +
-      s"Number of Active Labels: ${indexedLabelSums.getAs[Int](exprs(1).toString())} ************* ")
-
-  }
-
-  test("[06] Loading data to create separate data frames") {
-
-    val mHealthUser1DF: DataFrame = createDataFrame("mHealth_subject1.txt")
-
-    //val newDF: DataFrame = createBinaryColumn(mHealthUser1DF, "activityLabel")
-
-    val newCol: Column = when($"activityLabel".between(1,3), 0).otherwise(1)
+    val newCol: Column = when($"activityLabel".between(1, 3), 0).otherwise(1)
     val df2: DataFrame = mHealthUser1DF.withColumn("indexedLabel", newCol)
 
     df2.show()
-    df2.groupBy("indexedLabel").count.show
 
-//    newDF.show()
-//    newDF.groupBy("activityLabel").count().show()
+    df2.groupBy("indexedLabel").count.orderBy("indexedLabel").show
+  }
 
-    // mHealthUser1DF.groupBy("activityLabel").count().show()
+  /** Checks the activityLabel groupBy statement above tallies to sum of activityLabels in correct range */
+  test("[07] Check this corresponds with the correct sum of activityLabels in range") {
 
-    createRangeActivityLabels(mHealthUser1DF)
+    /**
+      * A helper function to sum the number of activityLabels within a given range to use in testing
+      * @param df the DataFrame to be operated on
+      * @return a new DataFrame with sum of number of records with label 1-3(inactive) and records with label 4-12(active)
+      */
+    def createRangeActivityLabels(df: DataFrame): List[Long] = {
+
+      val activityRange: List[(Int, Int)] = List((1, 3), (4, 12))
+
+      val sumInRange: List[Column] = activityRange.map {
+        case (x, y) => {
+          val newLabel = s"${x}_${y}"
+          sum(when($"activityLabel".between(x, y), 1).otherwise(0)).alias(newLabel)
+        }
+      }
+
+      // Needed to prevent aggregating twice within same function which causes an error
+      val columnNames: List[Column] = activityRange.map {
+        case (x, y) => $"${x}_${y}"
+      }
+
+      val df3: DataFrame = df.groupBy($"activityLabel").agg(sumInRange.head, sumInRange.tail: _*).orderBy($"activityLabel")
+      df3.show
+
+      val indexedLabel0 = df3.agg(sum(columnNames.head)).first.getAs[Long](0)
+      val indexedLabel1 = df3.agg(sum(columnNames(1))).first.getAs[Long](0)
+
+      val result: List[Long] = List(indexedLabel0, indexedLabel1)
+      result
+    }
+
+    val result = createRangeActivityLabels(mHealthUser1DF)
+
+    assertResult(9216) { result(0) }
+    assertResult(25958) { result(1) }
 
   }
 }
+
+
