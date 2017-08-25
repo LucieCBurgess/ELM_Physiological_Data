@@ -6,12 +6,14 @@ package pipeline
   */
 
 import data_load.{DataLoadTest, SparkSessionTestWrapper}
+
 import scala.collection.mutable
 import org.apache.spark.ml.classification.{LogisticRegression, LogisticRegressionModel}
-import org.apache.spark.ml.evaluation.BinaryClassificationEvaluator
+import org.apache.spark.ml.evaluation.{BinaryClassificationEvaluator, Evaluator}
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.ml.feature.VectorAssembler
 import org.apache.spark.ml.param.ParamMap
+import org.apache.spark.ml.tuning.{CrossValidator, ParamGridBuilder}
 import org.apache.spark.ml.{Pipeline, PipelineModel, PipelineStage, Transformer}
 import org.apache.spark.sql.functions.when
 import org.apache.spark.sql.functions._
@@ -90,8 +92,43 @@ object LogisticRegressionTest extends SparkSessionTestWrapper {
     println(s"Weights: ${lrModel.coefficients} Intercept: ${lrModel.intercept}")
 
     /** Make predictions and evaluate the model using BinaryClassificationEvaluator */
+    println("************ Evaluating model and calculating train and test areaUnderROC - larger is better ************")
+    val evaluator = new BinaryClassificationEvaluator().setMetricName("areaUnderROC").setLabelCol("binaryLabel").setRawPredictionCol("rawPrediction")
+    //val evaluatorParams = ParamMap(evaluator.metricName -> "areaUnderROC")
     evaluateClassificationModel("Train",pipelineModel, trainData)
     evaluateClassificationModel("Test", pipelineModel, testData)
+
+    /** Perform cross-validation on the dataset */
+    println("************* Performing cross validation and computing best parameters ************")
+      // FIXME - how to choose different features - use hashingTF? Tokenizer?
+    val paramGrid = new ParamGridBuilder()
+      .addGrid(lr.regParam, Array(params.regParam, 0.01, 0.1))
+      .addGrid(lr.maxIter, Array(10, 50, params.maxIter))
+      .addGrid(lr.elasticNetParam, Array(params.elasticNetParam, 0.5, 1.0))
+      .build()
+
+    println(s"ParamGrid size is ${paramGrid.size}")
+
+    val cv = new CrossValidator()
+      .setEstimator(pipeline)
+      .setEvaluator(evaluator)
+      .setEstimatorParamMaps(paramGrid)
+      .setNumFolds(5)
+
+    val cvStartTime = System.nanoTime()
+    val cvModel = cv.fit(trainData)
+    val cvPredictions = cvModel.transform(testData)
+    cvPredictions.select("activityLabel", "binaryLabel", "modelFeatures", "rawPrediction", "probability", "prediction").show
+    evaluator.evaluate(cvPredictions)
+    val crossValidationTime = (System.nanoTime() - cvStartTime) / 1e9
+    println(s"Cross validation time: $crossValidationTime seconds")
+
+    val bestModel = cvModel.bestModel.asInstanceOf[PipelineModel]
+    val avgParams = cvModel.avgMetrics
+
+    val bestLRParams = bestModel.stages.last.asInstanceOf[LogisticRegressionModel].explainParams
+
+    println(s"The best model is ${bestModel.toString()} and the params are $bestLRParams")
 
   }
 
@@ -99,10 +136,9 @@ object LogisticRegressionTest extends SparkSessionTestWrapper {
     * Evaluate the given ClassificationModel on data. Print the results. Based on decision tree example
     * @param model  Must fit ClassificationModel abstraction, with Transformers and Estimators
     * @param df  DataFrame with "prediction" and labelColName columns
-    * @param metric must be "areaUnderROC" or "areaUnderPR" according to BinaryClassificationEvaluator API
+    * metric must be "areaUnderROC" or "areaUnderPR" according to BinaryClassificationEvaluator API
     */
-  private def evaluateClassificationModel(modelName: String, model: Transformer, df: DataFrame, metric: String = "areaUnderROC",
-   labelCol: String = "binaryLabel", rawPredictionCol: String = "rawPrediction"): Unit = {
+  private def evaluateClassificationModel(modelName: String, model: Transformer, df: DataFrame): Unit = {
 
     val startTime = System.nanoTime()
     val predictions = model.transform(df).cache() // gives predictions for both training and test data
@@ -113,16 +149,22 @@ object LogisticRegressionTest extends SparkSessionTestWrapper {
     val selected = predictions.select("activityLabel", "binaryLabel", "modelFeatures", "rawPrediction", "probability", "prediction")
     selected.show()
 
-    val evaluator = new BinaryClassificationEvaluator().setMetricName(metric).setLabelCol(labelCol).setRawPredictionCol(rawPredictionCol)
+    val evaluator = new BinaryClassificationEvaluator().setMetricName("areaUnderROC").setLabelCol("binaryLabel").setRawPredictionCol("rawPrediction")
 
-    val evaluatorParams = ParamMap(evaluator.metricName -> metric)
+    //val evaluatorParams = ParamMap(evaluator.metricName -> metric)
 
-    val outputMetric = evaluator.evaluate(predictions, evaluatorParams)
+    val output = evaluator.evaluate(predictions)
 
     println(s"Classification results for $modelName: ")
-    println(s"The accuracy of the model $modelName for input file $fileName using ${evaluator.getMetricName} is: $outputMetric")
+    println(s"The accuracy of the model $modelName for input file $fileName using areaUnderROC is: $output")
 
   }
+
+  private def performCrossValidation(model: Transformer, df: DataFrame) :Unit = {
+    ???
+  }
+
+
 }
 
 
