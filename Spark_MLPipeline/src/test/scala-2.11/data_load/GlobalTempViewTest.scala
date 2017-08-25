@@ -8,9 +8,9 @@ package data_load
 
 import org.apache.spark.sql.functions._
 import org.apache.spark.sql.{DataFrame, Dataset}
-import org.scalatest.{BeforeAndAfter, FunSuite}
+import org.scalatest.FunSuite
 
-class GlobalTempViewTest extends FunSuite with BeforeAndAfter with SparkSessionTestWrapper {
+class GlobalTempViewTest extends FunSuite with SparkSessionTestWrapper {
 
   import spark.implicits._
 

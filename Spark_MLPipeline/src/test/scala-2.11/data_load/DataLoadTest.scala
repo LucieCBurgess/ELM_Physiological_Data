@@ -5,6 +5,9 @@ import org.apache.spark.sql.{DataFrame, SparkSession}
 /**
   * Created by lucieburgess on 24/08/2017.
   */
+
+//FIXME exception handling ... try ... catch block
+
 object DataLoadTest extends SparkSessionTestWrapper {
 
   import spark.implicits._

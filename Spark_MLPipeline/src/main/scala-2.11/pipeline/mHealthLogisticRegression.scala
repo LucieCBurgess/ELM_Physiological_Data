@@ -1,4 +1,4 @@
-package logistic_regression
+package pipeline
 
 /**
   * Created by lucieburgess on 15/08/2017.
