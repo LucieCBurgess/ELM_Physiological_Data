@@ -1,6 +1,8 @@
-package data_load
+package dev.data_load
 
 import org.apache.spark.sql.{DataFrame, SparkSession}
+
+import scala.util.Try
 
 /**
   * Created by lucieburgess on 04/08/2017.
@@ -23,18 +25,11 @@ import org.apache.spark.sql.{DataFrame, SparkSession}
 
 // FIXME - configurations need to be set at some point - within val spark .config("spark.some.config.option", "some-value")
 
-object DataLoad {
+object MultipleDataLoad extends SparkSessionWrapper {
 
   def main(args: Array[String]) {
 
-    val spark = SparkSession
-      .builder
-      .appName("Loading_data")
-      .master("local[*]")
-      .getOrCreate()
-
     import spark.implicits._
-
 
     /** Helper function to create a DataFrame from a textfile */
     def createDataFrame(fileName: String) :DataFrame =  {
@@ -73,11 +68,6 @@ object DataLoad {
     completeDF.show(2, 0)
     println("The number of rows in the dataset is " + completeDF.count()) //343195
     completeDF.groupBy("activityLabel").count().show()
-
-    //FIXME add rowID using monotonically increasing ID
-    //FIXME create a global temporary view
-
-    spark.stop()
-
   }
+  spark.stop()
 }

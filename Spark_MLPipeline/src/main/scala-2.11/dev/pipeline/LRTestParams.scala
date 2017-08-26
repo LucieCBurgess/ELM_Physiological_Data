@@ -1,6 +1,4 @@
-package pipeline
-
-import org.apache.spark.ml.param.{ParamMap, Params}
+package dev.pipeline
 
 /**
   * Created by lucieburgess on 25/08/2017.

@@ -1,4 +1,4 @@
-package data_load
+package data_load_test
 
 import org.scalatest.FunSuite
 

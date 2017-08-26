@@ -1,10 +1,11 @@
-package data_load
+package data_load_test
 
 /**
   * Created by lucieburgess on 23/08/2017.
   * Unit test for adding a column with a conditional statement, changing the ActivityLevels from 0-12 to 0 \ 1
   */
 
+import dev.data_load.DataLoad
 import org.apache.spark.sql.{Column, DataFrame, Row}
 import org.scalatest.FunSuite
 import org.apache.spark.sql.functions._
@@ -14,13 +15,15 @@ class addNewColumnTest extends FunSuite with SparkSessionTestWrapper {
 
   import spark.implicits._
 
-  val mHealthUser1DF: DataFrame = DataLoadTest.createDataFrame("mHealth_subject1.txt").filter($"activityLabel" > 0)
+  val dfs : Seq[DataFrame] = Seq("mHealth_subject1.txt").map(DataLoad.createDataFrame).flatten
+
+  val df: DataFrame = dfs.head.filter($"activityLabel" > 0)
 
   /** Test to add a new column to the dataframe with indexed label (0 or 1) from activityLabel (1-3, 4-12) */
   test("[06] Adding a new column to the DataFrame with indexedLabel") {
 
     val newCol: Column = when($"activityLabel".between(1, 3), 0).otherwise(1)
-    val df2: DataFrame = mHealthUser1DF.withColumn("indexedLabel", newCol)
+    val df2: DataFrame = df.withColumn("indexedLabel", newCol)
 
     df2.show()
 
@@ -40,10 +43,9 @@ class addNewColumnTest extends FunSuite with SparkSessionTestWrapper {
       val activityRange: List[(Int, Int)] = List((1, 3), (4, 12))
 
       val sumInRange: List[Column] = activityRange.map {
-        case (x, y) => {
+        case (x, y) =>
           val newLabel = s"${x}_${y}"
           sum(when($"activityLabel".between(x, y), 1).otherwise(0)).alias(newLabel)
-        }
       }
 
       // Needed to prevent aggregating twice within same function which causes an error
@@ -61,7 +63,7 @@ class addNewColumnTest extends FunSuite with SparkSessionTestWrapper {
       result
     }
 
-    val result = createRangeActivityLabels(mHealthUser1DF)
+    val result = createRangeActivityLabels(df)
 
     assertResult(9216) { result.head }
     assertResult(25958) { result(1) }

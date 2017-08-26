@@ -1,11 +1,11 @@
-package pipeline
-
-import data_load.SparkSessionTestWrapper
+package dev.pipeline
 
 /**
   * Created by lucieburgess on 25/08/2017.
+  * Main method for LogisticRegression code, setting up parameters and calling run()
   */
-object LRTestMain extends SparkSessionTestWrapper {
+object LRTestMain extends SparkSessionWrapper {
+
 
   def main(args: Array[String]): Unit = {
 
@@ -50,11 +50,9 @@ object LRTestMain extends SparkSessionTestWrapper {
     }
 
     parser.parse(args, defaultParams) match {
-      case Some(params) => LogisticRegressionTest.run(params)
+      case Some(params) => LRPipeline.run(params)
       case _ => sys.exit(1)
     }
-
   }
-
   spark.stop()
 }

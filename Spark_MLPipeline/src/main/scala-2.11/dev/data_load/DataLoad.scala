@@ -1,22 +1,20 @@
-package data_load
+package dev.data_load
 
-import org.apache.spark.sql.{DataFrame, SparkSession}
+import org.apache.spark.sql.DataFrame
+import scala.util.Try
 
 /**
   * Created by lucieburgess on 24/08/2017.
+  * Helper function to create a DataFrame from a textfile, re-used in subsequent classes, with some exception handling
   */
 
-//FIXME exception handling ... try ... catch block
+object DataLoad extends SparkSessionWrapper {
 
-object DataLoadTest extends SparkSessionTestWrapper {
+  def createDataFrame(fileName: String): Option[DataFrame] = {
 
-  import spark.implicits._
+    import spark.implicits._
 
-  /** Helper function to create a DataFrame from a textfile, re-used in subsequent tests */
-  def createDataFrame(fileName: String) :DataFrame =  {
-
-    val df = spark.sparkContext
-      .textFile("/Users/lucieburgess/Documents/Birkbeck/MSc_Project/MHEALTHDATASET/" + fileName)
+    val df: Option[DataFrame] = Try(spark.sparkContext.textFile("/Users/lucieburgess/Documents/Birkbeck/MSc_Project/MHEALTHDATASET/" + fileName)
       .map(_.split("\\t"))
       .map(attributes => mHealthUser(attributes(0).toDouble, attributes(1).toDouble, attributes(2).toDouble,
         attributes(3).toDouble, attributes(4).toDouble,
@@ -28,7 +26,7 @@ object DataLoadTest extends SparkSessionTestWrapper {
         attributes(20).toDouble, attributes(21).toDouble, attributes(22).toDouble,
         attributes(23).toInt))
       .toDF()
-      .cache()
+      .cache()).toOption
     df
   }
 }

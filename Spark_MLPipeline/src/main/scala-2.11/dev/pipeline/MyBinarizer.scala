@@ -1,12 +1,12 @@
-package pipeline
+package dev.pipeline
 
-import org.apache.spark.ml.param.ParamMap
 import org.apache.spark.ml.Transformer
 import org.apache.spark.ml.attribute.BinaryAttribute
-import org.apache.spark.sql.{DataFrame, Dataset}
-import org.apache.spark.sql.types.{IntegerType, StructField, StructType}
+import org.apache.spark.ml.param.ParamMap
 import org.apache.spark.ml.util.Identifiable
 import org.apache.spark.sql.functions._
+import org.apache.spark.sql.types.{IntegerType, StructField, StructType}
+import org.apache.spark.sql.{DataFrame, Dataset}
 
 /**
   * Created by lucieburgess on 25/08/2017.
@@ -18,7 +18,7 @@ import org.apache.spark.sql.functions._
   */
 class MyBinarizer(override val uid: String) extends Transformer {
 
-  def this() = this(Identifiable.randomUID("initialTransformer"))
+  def this() = this(Identifiable.randomUID("simpleBinarizer"))
 
   override def copy (extra: ParamMap): MyBinarizer = defaultCopy(extra)
 
@@ -37,6 +37,7 @@ class MyBinarizer(override val uid: String) extends Transformer {
 
     inputType match {
       case IntegerType => dataset.select(col("*"),binarizerInt(col(inputColName)).as(outputColName, metadata))
+ //     case _ => throw new IllegalArgumentException(s"Data type $inputType is not supported")
     }
   }
 

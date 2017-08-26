@@ -1,4 +1,4 @@
-package pipeline
+package dev.pipeline
 
 /**
   * Created by lucieburgess on 15/08/2017.
@@ -6,45 +6,51 @@ package pipeline
   * Main method is in LRTestMain.scala
   */
 
-import data_load.{DataLoadTest, SparkSessionTestWrapper}
-import scala.collection.mutable
+//FIXME - could do with more unit testing
+
+import dev.data_load.DataLoad
 import org.apache.spark.ml.classification.{LogisticRegression, LogisticRegressionModel}
 import org.apache.spark.ml.evaluation.{BinaryClassificationEvaluator, Evaluator}
-import org.apache.spark.sql.DataFrame
 import org.apache.spark.ml.feature.VectorAssembler
 import org.apache.spark.ml.tuning.{CrossValidator, ParamGridBuilder}
 import org.apache.spark.ml.{Pipeline, PipelineModel, PipelineStage, Transformer}
-import org.apache.spark.sql.functions.when
+import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.functions._
 
+import scala.collection.mutable
 
-object LogisticRegressionTest extends SparkSessionTestWrapper {
+
+object LRPipeline extends SparkSessionWrapper {
+
+  import spark.implicits._
 
   val fileName: String = "mHealth_subject1.txt"
 
   def run(params: LRTestParams) :Unit = {
 
-    import spark.implicits._
-
     println(s"Logistic Regression Example from the Spark examples with some dummy data and parameters: \n$params")
 
     /** Load training and test data and cache it */
-    val data = DataLoadTest.createDataFrame(fileName)
+    val df2 = DataLoad.createDataFrame(fileName) match {
+      case Some(df) => df
+        .filter($"activityLabel" > 0)
+        .withColumn("binaryLabel", when($"activityLabel".between(1, 3), 0).otherwise(1))
+        .withColumn("uniqueID", monotonically_increasing_id())
+      case None => throw new UnsupportedOperationException("Couldn't create DataFrame")
+    }
 
     /** Set up the pipeline stages */
     val pipelineStages = new mutable.ArrayBuffer[PipelineStage]()
 
-    /** Filter for unLabelled data and add a new binary column, indexedLabel */
-    //FIXME how to add this step to the pipeline as a Transformer
-    //val binarizedData :Transformer = new MyBinarizer() //Moved to a separate class, Transformer is abstract
-      val df2 = data
-        .filter($"activityLabel" > 0)
-        .withColumn("binaryLabel",when($"activityLabel".between(1, 3), 0).otherwise(1))
-        .withColumn("uniqueID", monotonically_increasing_id())
-
     /** Randomly split data into test, train with 50% split */
-      // FIXME - add this to params. See DecisionTreeExample. Basically need to amend DataLoad method to include params
+    // FIXME - add this to params. See DecisionTreeExample. Basically need to amend DataLoad method to include params
     val Array(trainData, testData) = df2.randomSplit(Array(0.5,0.5),seed = 12345)
+
+    /** Incorporate myBinarizer instead of .withColumn("binaryLabel")*/
+//    val myBinarizer = new MyBinarizer()
+//    pipelineStages += myBinarizer
+
+    df2.show()
 
     //FIXME - in the real pipeline we would include a Feature Transformer step here to calculate velocity from accelerometer data
 
@@ -90,7 +96,7 @@ object LogisticRegressionTest extends SparkSessionTestWrapper {
     evaluateClassificationModel("Test", pipelineModel, testData)
 
     /** Perform cross-validation on the dataset */
-    // FIXME - how to choose different features and change these parameters - use hashingTF? Tokenizer?
+    // FIXME - how to choose different features and change these parameters
     println("************* Performing cross validation and computing best parameters ************")
     performCrossValidation(trainData, testData, params, pipeline, lr)
 
@@ -101,7 +107,11 @@ object LogisticRegressionTest extends SparkSessionTestWrapper {
     *  metric must be "areaUnderROC" or "areaUnderPR" according to BinaryClassificationEvaluator API
     */
   private object SingletonEvaluator {
-      val evaluator: Evaluator = new BinaryClassificationEvaluator().setMetricName("areaUnderROC").setLabelCol("binaryLabel").setRawPredictionCol("rawPrediction")
+      val evaluator: Evaluator = new BinaryClassificationEvaluator()
+        .setMetricName("areaUnderROC")
+        .setLabelCol("binaryLabel")
+        .setRawPredictionCol("rawPrediction")
+
       def getEvaluator: Evaluator = evaluator
   }
 
