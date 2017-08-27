@@ -46,5 +46,4 @@ class MatrixInverse {
 //  def convertSparkDMtoBreezeDM(X: DataFrame) :BDM() = {
 //    val arr: Array = X.rows.map(x => x.toArray).collect.flatten }
 
-
 }
