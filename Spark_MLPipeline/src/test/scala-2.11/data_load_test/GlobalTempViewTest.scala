@@ -7,7 +7,7 @@ package data_load_test
   * Also added a monotonically increasing id()
   */
 
-import dev.data_load.{DataLoad, mHealthUser}
+import dev.data_load.{DataLoad, MHealthUser}
 import dev.data_load.DataLoad.spark
 import org.apache.spark.sql.functions._
 import org.apache.spark.sql.{DataFrame, Dataset}
@@ -21,7 +21,7 @@ class GlobalTempViewTest extends FunSuite with SparkSessionTestWrapper {
 
   val df: Option[DataFrame] = scala.util.Try(spark.sparkContext.textFile("/Users/lucieburgess/Documents/Birkbeck/MSc_Project/MHEALTHDATASET/" + fileName)
       .map(_.split("\\t"))
-      .map(attributes => mHealthUser(attributes(0).toDouble, attributes(1).toDouble, attributes(2).toDouble,
+      .map(attributes => MHealthUser(attributes(0).toDouble, attributes(1).toDouble, attributes(2).toDouble,
         attributes(3).toDouble, attributes(4).toDouble,
         attributes(5).toDouble, attributes(6).toDouble, attributes(7).toDouble,
         attributes(8).toDouble, attributes(9).toDouble, attributes(10).toDouble,

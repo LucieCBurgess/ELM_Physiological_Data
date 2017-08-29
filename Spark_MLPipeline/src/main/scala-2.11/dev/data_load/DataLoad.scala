@@ -8,6 +8,9 @@ import scala.util.Try
   * Helper function to create a DataFrame from a textfile, re-used in subsequent classes, with some exception handling
   */
 
+//FIXME - there should be an elegant way to validate that the incoming data is in the correct format, e.g. there aren't Strings or Longs in the data instead of Doubles and Ints
+// For a good example see https://stackoverflow.com/questions/33270907/how-to-validate-contents-of-spark-dataframe
+
 object DataLoad extends SparkSessionWrapper {
 
   def createDataFrame(fileName: String): Option[DataFrame] = {
@@ -16,7 +19,7 @@ object DataLoad extends SparkSessionWrapper {
 
     val df: Option[DataFrame] = Try(spark.sparkContext.textFile("/Users/lucieburgess/Documents/Birkbeck/MSc_Project/MHEALTHDATASET/" + fileName)
       .map(_.split("\\t"))
-      .map(attributes => mHealthUser(attributes(0).toDouble, attributes(1).toDouble, attributes(2).toDouble,
+      .map(attributes => MHealthUser(attributes(0).toDouble, attributes(1).toDouble, attributes(2).toDouble,
         attributes(3).toDouble, attributes(4).toDouble,
         attributes(5).toDouble, attributes(6).toDouble, attributes(7).toDouble,
         attributes(8).toDouble, attributes(9).toDouble, attributes(10).toDouble,

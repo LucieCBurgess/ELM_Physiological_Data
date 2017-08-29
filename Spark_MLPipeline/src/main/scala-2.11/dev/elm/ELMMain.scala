@@ -14,9 +14,9 @@ object ELMMain extends SparkSessionWrapper {
 
   def main(args: Array[String]): Unit = {
 
-    val defaultParams = ELMParams()
+    val defaultParams = DefaultELMParams()
 
-    val parser = new scopt.OptionParser[ELMParams]("Extreme Learning Machine parameters for class ELM") {
+    val parser = new scopt.OptionParser[DefaultELMParams]("Extreme Learning Machine parameters for class ELM") {
 
       head("ELM parameters")
 
@@ -39,6 +39,7 @@ object ELMMain extends SparkSessionWrapper {
           success
         }
       }
+
     }
 
     //FIXME - implement ELMpipeline once Estimator has been calculated

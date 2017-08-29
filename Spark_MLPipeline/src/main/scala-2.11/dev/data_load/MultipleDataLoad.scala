@@ -37,7 +37,7 @@ object MultipleDataLoad extends SparkSessionWrapper {
       val df = spark.sparkContext
         .textFile("/Users/lucieburgess/Documents/Birkbeck/MSc_Project/MHEALTHDATASET/" + fileName)
         .map(_.split("\\t"))
-        .map(attributes => mHealthUser(attributes(0).toDouble, attributes(1).toDouble, attributes(2).toDouble,
+        .map(attributes => MHealthUser(attributes(0).toDouble, attributes(1).toDouble, attributes(2).toDouble,
           attributes(3).toDouble, attributes(4).toDouble,
           attributes(5).toDouble, attributes(6).toDouble, attributes(7).toDouble,
           attributes(8).toDouble, attributes(9).toDouble, attributes(10).toDouble,
