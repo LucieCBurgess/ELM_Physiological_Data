@@ -11,7 +11,8 @@ import org.apache.spark.sql.{DataFrame, Dataset}
 
 /**
   * Created by lucieburgess on 27/08/2017.
-  * Has access to methods in ClassificationModel through extending ELMModel e.g.
+  * Has access to methods in ClassificationModel through extending ELMModel. Not all of these are public according to the
+  * documentation yet seem to be available e.g. getNumClasses
   */
 class ELMEstimator(val uid: String) extends Classifier[Vector, ELMEstimator, ELMModel]
   with ELMParamsMine with DefaultParamsWritable with SparkSessionWrapper {
@@ -62,14 +63,13 @@ class ELMEstimator(val uid: String) extends Classifier[Vector, ELMEstimator, ELM
 
     // Do learning to estimate the coefficients vector.
     //FIXME - logic of the model would happen here.
-    // val coefficients = Vectors.zeros(numFeatures)
     val coefficients = Vectors.zeros(numFeatures)
 
     // Unpersist the dataset now that we have trained it.
     ds.unpersist()
 
     // Create a model, and return it.
-    val model = new ELMModel(uid, numFeatures, coefficients).setParent(this)
+    val model = new ELMModel(uid, coefficients).setParent(this)
 
     copyValues(model)
   }
