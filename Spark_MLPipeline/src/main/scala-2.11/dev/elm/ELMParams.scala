@@ -12,15 +12,23 @@ import org.apache.spark.mllib.linalg.VectorUDT
   * Created by lucieburgess on 27/08/2017.
   * See https://github.com/apache/spark/blob/master/examples/src/main/scala/org/apache/spark/examples/ml/DeveloperApiExample.scala
   *
+  * This class contains EXTRA parameters that are not already set by Classifier.scala
+  * Classifier sets four parameters which can be get or set but their implementation cannot be overriden as they are final
+  * These parameters are: featuresCol, labelCol, predictionCol and rawPredictionCol.
+  *
   * NOTE: The usual way to add a parameter to a model or algorithm is to include:
   *   - val myParamName: ParamType
   *   - def getMyParamName
   *   - def setMyParamName
-  * Here, we have a trait to be mixed in with the Estimator and Model (ELMEstimator and ELMEstimatorModel) respectively.
-  * We place the setters e.g (setInputCol) method in the ELMEstimator class since the inputCol parameter is only used during training
+  * Here, we have a trait to be mixed in with the Estimator and Model (ELMClassifier and ELMModel) respectively.
+  * We can place the setters e.g (setActivationFunc) method in the ELMClassifier class since the inputCol parameter is only used during training
   * (not in the Model).
+  *
+  * There is no need to validate and transform the schema as this is already done by ClassifierParams and PredictorParams
+  * The method can be overwritten if necessary - see Classifier.scala
+  *
   */
-trait ELMParamsMine extends Params {
+trait ELMParams extends Params {
 
   /** Defines and sets the activation function parameter and uses the ParamValidators factory methods class to check configuration */
   val activationFuncs: Array[String] = Array("Sigmoid","RBF", "Tanh","Step")
@@ -35,37 +43,11 @@ trait ELMParamsMine extends Params {
     new IntParam(this, "hiddenNodes", "number of hidden nodes in the ELM", ParamValidators.inRange(10.0,200.0))
     def getHiddenNodes: Int = $(hiddenNodes)
 
-  /** Parameter for input cols of the ELM, which is combined into a FeaturesCol vector in the Transformer */
-  val allowedInputCols: Array[String] = ScalaReflection.schemaFor[MHealthUser].dataType match {
-    case s: StructType => s.fieldNames
-    case _ => Array[String]()
-  }
-
-  val inputCol: Param[String] =
-    new Param(this, "inputCol", s"The input column made up of column features", ParamValidators.inArray(allowedInputCols))
-    def getInputCol: String = $(inputCol)
-
-  /** Parameter for the output col of the ELM, which can be set by the user */
-  val outputCol: Param[String] =
-    new Param(this, "inputCol", s"The input column made up of column features")
-  def getOutputCol: String = $(outputCol)
-
   /** Parameter to set the fraction of the dataset to be held out for testing. Can be in range 10% - 50%
     * At least 50% must be used to train the model
     */
   val fracTest: DoubleParam =
     new DoubleParam(this, "fracTest", "Fraction of data to be held out for testing", ParamValidators.inRange(0.10, 0.50))
-    //def setFracTest(value: Double): this.type = set(fracTest, value)
     def getFracTest: Double = $(fracTest)
-
-  /** Validate and transform the input schema, which can then be used by ELMEstimator and ELMEstimatorModel
-    * https://github.com/apache/spark/blob/master/mllib/src/main/scala/org/apache/spark/ml/feature/MinMaxScaler.scala
-    */
-  protected def validateAndTransformSchema(schema: StructType): StructType = {
-    ELMSchemaUtils.checkColumnType(schema, $(inputCol), new VectorUDT)
-    require(!schema.fieldNames.contains($(outputCol)), s"Output column ${$(outputCol)} already exists.")
-    val outputFields = schema.fields :+ StructField($(outputCol), new VectorUDT, false)
-    StructType(outputFields)
-  }
 
 }

@@ -28,7 +28,7 @@ object ELMSchemaUtils {
     }
 
     /**
-      * Check whether the given schema contains a column of one of the require data types.
+      * Check whether the given schema contains a column of one of the required data types.
       * @param colName  column name
       * @param dataTypes  required column data types
       */

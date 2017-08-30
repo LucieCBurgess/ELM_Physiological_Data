@@ -42,13 +42,12 @@ object ELMMain extends SparkSessionWrapper {
 
     }
 
-    //FIXME - implement ELMpipeline once Estimator has been calculated
-    //FIXME - perhaps define a trait for the pipeline so that other models can be easily implemented, e.g. MultiLayer perceptron
+    //FIXME - not sure how to use ELMParams instead of DefaultELMParams?
     parser.parse(args, defaultParams) match {
       //case Some(params) => ELMPipeline.run(params) - not yet implemented
       case Some(params) => println(s"ELM params \n$params")
       case _ => sys.exit(1)
     }
   }
-  spark.stop()
+  //spark.stop()
 }

@@ -11,51 +11,43 @@ import org.apache.spark.sql.{DataFrame, Dataset}
 
 /**
   * Created by lucieburgess on 27/08/2017.
+  * This is a concrete Estimator (Classifier) of type ELMEstimator. Conforms to the following API:
+  * https://spark.apache.org/docs/latest/api/scala/index.html#org.apache.spark.ml.classification.Classifier
   * Has access to methods in ClassificationModel through extending ELMModel. Not all of these are public according to the
   * documentation yet seem to be available e.g. getNumClasses
+  * Clean version which uses the DeveloperAPI example
   */
-class ELMEstimator(val uid: String) extends Classifier[Vector, ELMEstimator, ELMModel]
-  with ELMParamsMine with DefaultParamsWritable with SparkSessionWrapper {
+class ELMClassifier(val uid: String) extends Classifier[Vector, ELMClassifier, ELMModel]
+  with ELMParams with DefaultParamsWritable with SparkSessionWrapper {
 
   def this() = this(Identifiable.randomUID("ELM Estimator algorithm which includes fit() method"))
 
-  //FIXME - use MinMaxScaler to set the RawPredictions column to a value of (0,1) which helps give final labels
-
-  override def copy(extra: ParamMap): ELMEstimator = defaultCopy(extra)
+  override def copy(extra: ParamMap): ELMClassifier = defaultCopy(extra)
 
   /** Set parameters */
+  def setActivationFunc(value: String): this.type = set(activationFunc, value)
 
-  def setInputCol(value: String): this.type = set(inputCol, value)
-
-  def setOutputCol(value: String): this.type = set(outputCol, value)
-
-  def setActivationFunc(value: String): this.type = set(activationFunc, value) // has to be in this class since returns type ELMEstimator
-
-  setHiddenNodes(10)
   def setHiddenNodes(value: Int): this.type = set(hiddenNodes, value)
 
   def setFracTest(value: Double): this.type = set(fracTest, value)
 
-  override def transformSchema(schema: StructType): StructType = {
-    validateAndTransformSchema(schema)
-  }
 
-  //Implements method in Predictor. Not sure why to use train() rather than fit()
-  // FIXME - this contains the logic of the model - to write
-  // FIXME - where do we take the feature columns and map these into a vector, like in the Logistic Regression example?
-  // FIXME - where do we set activityLabel as labelCol?
+  //Implements method in Predictor. This method is used by fit()
+  // According to Predictor, this is the method that developers need to implement and can avoid dealing with schema validation
+  // and copying parameters into the model
   override def train(ds: Dataset[_]): ELMModel = {
 
     import ds.sparkSession.implicits._
 
-    transformSchema(ds.schema, logging = true)
+    //transformSchema(ds.schema, logging = true) // if you don't include this line you don't get a features column
     ds.cache()
+    println("**************** printing the training dataset schema in the TRAIN() function within ELMClassifier ********************")
+    ds.printSchema()
     val datasetSize = ds.count() //gives the total number of training or (train, test) examples
 
     val numClasses = getNumClasses(ds) // states whether this is a binomial or a multinomial classifier, should be 2
 
     // Get the number of features by peeking at the first row in the dataset
-    // FIXME bit confused about these because we should have the ability to set numFeatures
     val numFeatures: Int = ds.select(col($(featuresCol))).head.get(0).asInstanceOf[Vector].size
 
     // Determine the number of records for each class[0 or 1]
@@ -63,17 +55,19 @@ class ELMEstimator(val uid: String) extends Classifier[Vector, ELMEstimator, ELM
 
     // Do learning to estimate the coefficients vector.
     //FIXME - logic of the model would happen here.
+    //FIXME - I guess we would use FracTest here as the model is trained on only $FracTest% of the data.
     val coefficients = Vectors.zeros(numFeatures)
 
     // Unpersist the dataset now that we have trained it.
-    ds.unpersist()
+    //ds.unpersist()
 
     // Create a model, and return it.
     val model = new ELMModel(uid, coefficients).setParent(this)
+    model
 
-    copyValues(model)
+    //copyValues(model)
   }
 }
 
 // Companion object enables deserialisation of ELMParamsMine
-object ELMEstimator extends DefaultParamsReadable[ELMEstimator]
+object ELMClassifier extends DefaultParamsReadable[ELMClassifier]

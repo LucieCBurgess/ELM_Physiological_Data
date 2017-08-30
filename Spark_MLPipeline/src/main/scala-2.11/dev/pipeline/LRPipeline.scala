@@ -16,7 +16,6 @@ import org.apache.spark.ml.tuning.{CrossValidator, ParamGridBuilder}
 import org.apache.spark.ml.{Pipeline, PipelineModel, PipelineStage, Transformer}
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.functions._
-
 import scala.collection.mutable
 
 
@@ -125,7 +124,7 @@ object LRPipeline extends SparkSessionWrapper {
     val startTime = System.nanoTime()
     val predictions = model.transform(df).cache() // gives predictions for both training and test data
     val predictionTime = (System.nanoTime() - startTime) / 1e9
-    println(s"Training time: $predictionTime seconds")
+    println(s"Running time: $predictionTime seconds")
     predictions.printSchema()
 
     val selected = predictions.select("activityLabel", "binaryLabel", "modelFeatures", "rawPrediction", "probability", "prediction")
