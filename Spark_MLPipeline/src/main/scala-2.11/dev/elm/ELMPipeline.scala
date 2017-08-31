@@ -19,7 +19,7 @@ import scala.collection.mutable
   */
 object ELMPipeline extends SparkSessionWrapper {
 
-  // Not using ELMMain at this stage - need to get working without complicated Params first
+  //FIXME - Not using ELMMain at this stage - need to get working without complicated Params first
 
   def main(args: Array[String]) {
 
@@ -57,10 +57,10 @@ object ELMPipeline extends SparkSessionWrapper {
 
 
     val featureAssembler = new VectorAssembler().setInputCols(featureCols).setOutputCol("features")
-    // pipelineStages += featureAssembler KEEP THIS OUT not picking up transform method correctly
+    // pipelineStages += featureAssembler KEEP THIS OUT - pipelineStages not picking up transform method correctly
 
+    /** Add the features column, "features", to the input data frame as the pipelineStages is not picking this up correctly */
     val preparedData = featureAssembler.transform(data)
-
 
     /** Create the classifier, set parameters for training */
     val elmr = new ELMClassifier()
@@ -76,36 +76,38 @@ object ELMPipeline extends SparkSessionWrapper {
     /** Set the pipeline from the pipeline stages */
     val pipeline: Pipeline = new Pipeline().setStages(pipelineStages.toArray)
 
-    /** UseFracTest to set up the (trainData, testData) tuple and randomly split the data */
+    /** UseFracTest to set up the (trainData, testData) tuple and randomly split the preparedData */
     val train: Double = 1-elmr.getFracTest
     val test: Double = elmr.getFracTest
     val Array(trainData, testData) = preparedData.randomSplit(Array(train, test), seed = 12345)
 
-    /** Fit the pipeline, which includes training the model */
+    /** Fit the pipeline, which includes training the model, on the preparedData */
     val startTime = System.nanoTime()
     val pipelineModel: PipelineModel = pipeline.fit(trainData)
-    val elmModel = pipelineModel.stages.last.asInstanceOf[ELMModel]
+    val elmrModel = pipelineModel.stages.last.asInstanceOf[ELMModel]
 
-    println(s"************** Printing the featuresCol ************** + ${elmModel.getFeaturesCol}")
+    println(s"************** Printing the featuresCol ************** + ${elmrModel.getFeaturesCol}")
 
 
-    println("*************** Printing the schema of the training data within Pipeline ******************")
+    println("*************** Printing the schema of the training data within ELMPipeline ******************")
     trainData.toDF().printSchema()
+
+    println("*************** Pring the schema of the test data within ELMPipeline *******************")
+    testData.toDF().printSchema()
+
+
     val trainingTime = (System.nanoTime() - startTime) / 1e9
     println(s"Training time: $trainingTime seconds")
 
     /** Evaluate the model on the training and test data */
     //val elmModel = pipelineModel.stages.last.asInstanceOf[ELMModel]
-    val predictionsTrain = elmModel.transform(trainData).cache()
+    val predictionsTrain = elmrModel.transform(trainData).cache()
     println(s"The schema for the predicted dataset based on the training data is ${predictionsTrain.printSchema()}")
+    predictionsTrain.printSchema()
 
-    println("printing predictionsTrain")
-    predictionsTrain.show()
-
-    val predictionsTest: DataFrame = elmModel.transform(testData).cache()
+    val predictionsTest: DataFrame = elmrModel.transform(testData).cache()
     println(s"The schema for the predicted dataset based on the test data is ${predictionsTest.printSchema()}")
-
-    predictionsTest.show()
+    predictionsTest.printSchema()
 
     println("We made it to the end")
   }

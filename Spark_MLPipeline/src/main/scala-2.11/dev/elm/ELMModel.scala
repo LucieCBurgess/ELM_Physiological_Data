@@ -39,13 +39,18 @@ class ELMModel(override val uid: String, val coefficients: Vector)
 
   //override def transform(dataset: Dataset[_]): DataFrame = super.transform(dataset)
 
-  /** Raw prediction for every possible label. Fairly simple implementation based on dot product of (coefficients, features) */
+  /**
+    * Raw prediction for every possible label. Fairly simple implementation based on dot product of (coefficients, features)
+    * NB. BLAS not available so had to convert structures to arrays then to matrices and use Spark DenseMatrix class
+    * to do matrix mulitplication
+    */
   override def predictRaw(features: Vector): Vector = {
 
     //coefficients is a Vector of length numFeatures: val coefficients = Vectors.zeros(numFeatures)
     val coefficientsArray = coefficients.toArray
-    val coefficientsMatrix: SparkDenseMatrix = new SparkDenseMatrix(numFeatures, 1, coefficientsArray)
-    // This line not working: Caused by: java.lang.IllegalArgumentException: requirement failed: The columns of A don't match the number of elements of x. A: 1, x: 6
+    // This matrix is transposed so that the matrix multiplication works. Needs to have (numFeatures) columns and 1 row.
+    // Otherwise we get: java.lang.IllegalArgumentException: requirement failed: The columns of A don't match the number of elements of x. A: 1, x: 6
+    val coefficientsMatrix: SparkDenseMatrix = new SparkDenseMatrix(1, numFeatures, coefficientsArray)
     val margin: Array[Double] = coefficientsMatrix.multiply(features).toArray // contains a single element
     val rawPredictions: Array[Double] = Array(-margin(0),margin(0))
     new SparkDenseVector(rawPredictions)
