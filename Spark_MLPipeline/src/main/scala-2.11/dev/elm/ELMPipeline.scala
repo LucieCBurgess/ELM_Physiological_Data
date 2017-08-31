@@ -63,37 +63,37 @@ object ELMPipeline extends SparkSessionWrapper {
     val preparedData = featureAssembler.transform(data)
 
     /** Create the classifier, set parameters for training */
-    val elmr = new ELMClassifier()
+    val elm = new ELMClassifier()
       .setFeaturesCol("features")
       .setLabelCol("binaryLabel")
       .setHiddenNodes(10)
       .setActivationFunc("Sigmoid")
       .setFracTest(0.5)
 
-    pipelineStages += elmr
-    println("ELM parameters:\n" + elmr.explainParams() + "\n")
+    pipelineStages += elm
+    println("ELM parameters:\n" + elm.explainParams() + "\n")
 
     /** Set the pipeline from the pipeline stages */
     val pipeline: Pipeline = new Pipeline().setStages(pipelineStages.toArray)
 
     /** UseFracTest to set up the (trainData, testData) tuple and randomly split the preparedData */
-    val train: Double = 1-elmr.getFracTest
-    val test: Double = elmr.getFracTest
+    val train: Double = 1-elm.getFracTest
+    val test: Double = elm.getFracTest
     val Array(trainData, testData) = preparedData.randomSplit(Array(train, test), seed = 12345)
 
     /** Fit the pipeline, which includes training the model, on the preparedData */
     val startTime = System.nanoTime()
     val pipelineModel: PipelineModel = pipeline.fit(trainData)
-    val elmrModel = pipelineModel.stages.last.asInstanceOf[ELMModel]
+    val elmModel = pipelineModel.stages.last.asInstanceOf[ELMModel]
 
-    println(s"************** Printing the featuresCol ************** + ${elmrModel.getFeaturesCol}")
+    println(s"************** Printing the featuresCol ************** + ${elmModel.getFeaturesCol}")
 
 
     println("*************** Printing the schema of the training data within ELMPipeline ******************")
-    trainData.toDF().printSchema()
+    trainData.printSchema
 
-    println("*************** Pring the schema of the test data within ELMPipeline *******************")
-    testData.toDF().printSchema()
+    println("*************** Printing the schema of the test data within ELMPipeline *******************")
+    testData.printSchema
 
 
     val trainingTime = (System.nanoTime() - startTime) / 1e9
@@ -101,14 +101,16 @@ object ELMPipeline extends SparkSessionWrapper {
 
     /** Evaluate the model on the training and test data */
     //val elmModel = pipelineModel.stages.last.asInstanceOf[ELMModel]
-    val predictionsTrain = elmrModel.transform(trainData).cache()
-    println(s"The schema for the predicted dataset based on the training data is ${predictionsTrain.printSchema()}")
-    predictionsTrain.printSchema()
+    val predictionsTrain = elmModel.transform(trainData).cache()
+    println(s"The schema for the predicted dataset based on the training data is ${predictionsTrain.printSchema}")
+    predictionsTrain.printSchema
+    predictionsTrain.show(10)
 
-    val predictionsTest: DataFrame = elmrModel.transform(testData).cache()
-    println(s"The schema for the predicted dataset based on the test data is ${predictionsTest.printSchema()}")
-    predictionsTest.printSchema()
+    val predictionsTest: DataFrame = elmModel.transform(testData).cache()
+    println(s"The schema for the predicted dataset based on the test data is ${predictionsTest.printSchema}")
+    predictionsTest.printSchema
+    predictionsTest.show(10)
 
-    println("We made it to the end")
+    //FIXME - update to include BinaryClassificationEvaluator, once the ELM is working
   }
 }

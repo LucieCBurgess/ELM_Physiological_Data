@@ -18,7 +18,10 @@ import org.apache.spark.sql.{DataFrame, Dataset}
   * This uses the default implementation of predict(), which chooses the label corresponding to
   * the maximum value returned by [[predictRaw()]], as stated in the Classifier Model API
   *
-  * It also uses the default implementation of
+  * It also uses the default implementation of transform(ds: DataSet) and transformSchema( schema: StructType) in the Predicotr model.
+  * Note these methods are not passing correctly to the Pipeline API due to some bug in the Spark source code.
+  * As a result the features vector is not passing correctly through from ELMClassifier to ELMModel
+  * Therefore I have added the features vector manually to the DataFrame used in the pipeline.
   */
 class ELMModel(override val uid: String, val coefficients: Vector)
   extends ClassificationModel[Vector, ELMModel]
@@ -35,7 +38,7 @@ class ELMModel(override val uid: String, val coefficients: Vector)
   /** Number of features the model was trained on */
   override val numFeatures: Int = coefficients.size
 
-//  override def transformSchema(schema: StructType): StructType = super.transformSchema(schema)
+  //override def transformSchema(schema: StructType): StructType = super.transformSchema(schema)
 
   //override def transform(dataset: Dataset[_]): DataFrame = super.transform(dataset)
 
