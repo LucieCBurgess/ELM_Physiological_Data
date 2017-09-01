@@ -33,7 +33,7 @@ trait ELMParams extends Params {
   /** Defines and sets the activation function parameter and uses the ParamValidators factory methods class to check configuration */
   val activationFuncs: Array[String] = Array("Sigmoid","RBF", "Tanh","Step")
   val activationFunc: Param[String] =
-    new Param(this,"activationFunc", s"The activation function which sets modifies the hidden layer output, " +
+    new Param[String](this,"activationFunc", s"The activation function which sets modifies the hidden layer output, " +
       s"available activation functions: ${activationFuncs}.toString", ParamValidators.inArray(activationFuncs))
     def getActivationFunc: String = $(activationFunc)
 
