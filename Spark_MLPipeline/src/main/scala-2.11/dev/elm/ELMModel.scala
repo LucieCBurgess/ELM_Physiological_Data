@@ -1,14 +1,16 @@
 package dev.elm
 
 import org.apache.spark.ml.classification.ClassificationModel
-import org.apache.spark.ml.linalg.{Vector, DenseVector=>SparkDenseVector, DenseMatrix => SparkDenseMatrix}
-import org.apache.spark.ml.param.{ParamMap}
-import org.apache.spark.ml.util.{DefaultParamsWritable}
+import org.apache.spark.ml.linalg.{Vector, DenseMatrix => SDM, DenseVector => SDV}
+import breeze.linalg.{DenseMatrix => BDM, DenseVector => BDV, Matrix => BM, Vector => BV}
+import org.apache.spark.ml.param.ParamMap
+import org.apache.spark.ml.util.DefaultParamsWritable
+import org.apache.spark.sql.functions.col
 import org.apache.spark.sql.types.StructType
 import org.apache.spark.sql.{DataFrame, Dataset}
 
 /**
-  * Created by lucieburgess on 27/08/2017.
+  * Created by lucieburgess on 27/08/2017. LOTS OF WORK to do, this does not compile ...
   * This class is a Transformer according to the Spark Pipeline model
   * Note for each Estimator there is a companion class, Estimator model, which applies the Estimator to a dataset
   *
@@ -22,13 +24,14 @@ import org.apache.spark.sql.{DataFrame, Dataset}
   * Note these methods are not passing correctly to the Pipeline API due to some bug in the Spark source code.
   * As a result the features vector is not passing correctly through from ELMClassifier to ELMModel
   * Therefore I have added the features vector manually to the DataFrame used in the pipeline.
+  * // was class ELMModel (override val uid: String, val coefficients: Vector)
   */
-class ELMModel(override val uid: String, val coefficients: Vector)
+class ELMModel(override val uid: String, val modelBeta: BDV[Double])
   extends ClassificationModel[Vector, ELMModel]
     with ELMParams with DefaultParamsWritable {
 
   override def copy(extra: ParamMap): ELMModel = {
-    val copied = new ELMModel(uid, coefficients)
+    val copied = new ELMModel(uid, modelBeta)
     copyValues(copied, extra).setParent(parent)
   }
 
@@ -36,16 +39,26 @@ class ELMModel(override val uid: String, val coefficients: Vector)
   override val numClasses: Int = 2
 
   /** Number of features the model was trained on */
-  override val numFeatures: Int = coefficients.size
+  //FIXME this is hard-coded for now ...
+  override val numFeatures: Int = 6
+  // Get the number of features by peeking at the first row in the dataset
+  override val numFeatures: Int = ds.select(col($(featuresCol))).head.get(0).asInstanceOf[Vector].size
 
-  //override def transformSchema(schema: StructType): StructType = super.transformSchema(schema)
+  override def transformSchema(schema: StructType): StructType = super.transformSchema(schema)
 
-  //override def transform(dataset: Dataset[_]): DataFrame = super.transform(dataset)
+  /** Takes a dataframe, uses beta and ouputs a vector of classification labels */
+  override def transform(ds: Dataset[_]): DataFrame = {
+    transformSchema(ds.schema, logging = true)
+
+
+  }
 
   /**
     * Raw prediction for every possible label. Fairly simple implementation based on dot product of (coefficients, features)
     * NB. BLAS not available so had to convert structures to arrays then to matrices and use Spark DenseMatrix class
     * to do matrix mulitplication
+    * Need to update this function as originally predictRaw was based on coefficients, which is a vector of numFeatures
+    * Our predictRaw needs to be based on beta so I'm not sure how to calculate it
     */
   override def predictRaw(features: Vector): Vector = {
 

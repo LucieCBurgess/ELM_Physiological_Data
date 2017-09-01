@@ -2,12 +2,12 @@ package dev.elm
 
 import dev.data_load.SparkSessionWrapper
 import org.apache.spark.ml.classification.Classifier
-import org.apache.spark.ml.linalg.{Vector, Vectors, Matrix, Matrices}
-import org.apache.spark.ml.param.{IntParam, ParamMap}
+import org.apache.spark.ml.linalg.{Vector, DenseVector => SDV}
+import org.apache.spark.ml.param.ParamMap
 import org.apache.spark.ml.util.{DefaultParamsReadable, DefaultParamsWritable, Identifiable}
-import org.apache.spark.sql.types._
 import org.apache.spark.sql.functions._
 import org.apache.spark.sql.{DataFrame, Dataset}
+import breeze.linalg.{DenseVector => BDV}
 
 /**
   * Created by lucieburgess on 27/08/2017.
@@ -20,7 +20,7 @@ import org.apache.spark.sql.{DataFrame, Dataset}
 class ELMClassifier(val uid: String) extends Classifier[Vector, ELMClassifier, ELMModel]
   with ELMParams with DefaultParamsWritable with SparkSessionWrapper {
 
-  def this() = this(Identifiable.randomUID("ELM Estimator algorithm which includes fit() method"))
+  def this() = this(Identifiable.randomUID("ELM Estimator algorithm which includes train() method"))
 
   override def copy(extra: ParamMap): ELMClassifier = defaultCopy(extra)
 
@@ -31,43 +31,58 @@ class ELMClassifier(val uid: String) extends Classifier[Vector, ELMClassifier, E
 
   def setFracTest(value: Double): this.type = set(fracTest, value)
 
-
-  //Implements method in Predictor. This method is used by fit()
-  // According to Predictor, this is the method that developers need to implement and can avoid dealing with schema validation
-  // and copying parameters into the model
+  /**
+    * Implements method in org.apache.spark.ml.Predictor. This method is used by fit(). Uses the default version of transformSchema
+    * Trains the model to predict the training labels based on the ELMAlgorithm class.
+    * @param ds the dataset to be operated on
+    * @return an ELMModel which extends ClassificationModel with the output weight vector beta calculated, of length L,
+    *         where L is the number of hidden nodes.
+    */
   override def train(ds: Dataset[_]): ELMModel = {
 
     import ds.sparkSession.implicits._
-
     //transformSchema(ds.schema, logging = true) // if you don't include this line you don't get a features column
     ds.cache()
-    println("**************** printing the training dataset schema in the TRAIN() function within ELMClassifier ********************")
     ds.printSchema()
-    val datasetSize = ds.count() //gives the total number of training or (train, test) examples
 
-    val numClasses = getNumClasses(ds) // states whether this is a binomial or a multinomial classifier, should be 2
+    val numClasses = getNumClasses(ds)
+    println(s"This is a binomial classifier and the number of class should be 2: it is $numClasses")
 
-    // Get the number of features by peeking at the first row in the dataset
-    val numFeatures: Int = ds.select(col($(featuresCol))).head.get(0).asInstanceOf[Vector].size
-
-    // Determine the number of records for each class[0 or 1]
     val groupedByLabel = ds.select(col($(labelCol)).as[Double]).groupByKey(x => x)
+    println(s"The number of records in each class is: $groupedByLabel")
 
-    // Do learning to estimate the coefficients vector.
-    //FIXME - logic of the model would happen here.
-    //FIXME - I guess we would use FracTest here as the model is trained on only $FracTest% of the data.
-    val coefficients = Vectors.zeros(numFeatures)
+    //val X: SDM[Double] = ds.select("features") // put each training sample of features into an input Matrix, called features
+    // This is used by ELMClassifierAlgo to calculate the output weight vector beta from the features
+    // NB. ELMClassifierAlgo takes the features as a matrix, not a Vector of all features together so some data wrangling might be necessary here
 
-    // Unpersist the dataset now that we have trained it.
-    //ds.unpersist()
+    val modelBeta = new ELMClassifierAlgo(ds, hiddenNodes, "sigmoid").calculateBeta()
+    // beta is effectively the coefficients and then we write transform in ELMModel,
+    // or alternatively in ELMClassifierAlgo and pass it back to ELMModel. The transform is essentially the prediction.
 
-    // Create a model, and return it.
-    val model = new ELMModel(uid, coefficients).setParent(this)
+    val model = new ELMModel(uid, modelBeta).setParent(this)
     model
-
-    //copyValues(model)
   }
 }
 
-// Companion object enables deserialisation of ELMParamsMine
+/** Companion object enables deserialisation of ELMParamsMine */
 object ELMClassifier extends DefaultParamsReadable[ELMClassifier]
+
+
+/** This is the previous version using a blank coefficients vector which runs OK but doesn't actually learn anything */
+//FIXME - logic of the model would happen here.
+// Do learning to estimate the coefficients vector.
+//val coefficients = Vectors.zeros(numFeatures)
+// val model = new ELMModel (uid, coefficients).setParent(this)
+// model
+// Create a model, and return it.
+/** This is the previous version using a blank coefficients vector which runs OK but doesn't actually learn anything */
+//FIXME - logic of the model would happen here.
+// Do learning to estimate the coefficients vector.
+//val coefficients = Vectors.zeros(numFeatures)
+// val model = new ELMModel (uid, coefficients).setParent(this)
+// model
+// copyValues(model)
+//FIXME - pass one of these to ELMClassifierAlgo
+//val featuresVector: SDV = ds.select("features1", "features2", "features3").asInstanceOf[SDV]
+//val featuresColVector: DataFrame = ds.select(col($(featuresCol))) //pass this to ELMClassifierAlgo
+// val numRows = ds.count()

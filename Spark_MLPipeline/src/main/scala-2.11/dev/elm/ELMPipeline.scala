@@ -4,6 +4,7 @@ import dev.pipeline.{LRTestParams, SparkSessionWrapper}
 import dev.data_load.{DataLoad, MHealthUser}
 import org.apache.spark.ml.classification.{LogisticRegression, LogisticRegressionModel}
 import org.apache.spark.ml.evaluation.{BinaryClassificationEvaluator, Evaluator}
+import org.apache.spark.ml.linalg.{DenseVector => SDV}
 import org.apache.spark.ml.feature.VectorAssembler
 import org.apache.spark.ml.tuning.{CrossValidator, ParamGridBuilder}
 import org.apache.spark.ml.{Pipeline, PipelineModel, PipelineStage, Transformer}
@@ -61,6 +62,8 @@ object ELMPipeline extends SparkSessionWrapper {
 
     /** Add the features column, "features", to the input data frame as the pipelineStages is not picking this up correctly */
     val preparedData = featureAssembler.transform(data)
+
+    val featuresDF = preparedData.toDF("acc_Chest_X", "acc_Chest_Y", "acc_Chest_Z", "acc_Arm_X", "acc_Arm_Y", "acc_Arm_Z")
 
     /** Create the classifier, set parameters for training */
     val elm = new ELMClassifier()
