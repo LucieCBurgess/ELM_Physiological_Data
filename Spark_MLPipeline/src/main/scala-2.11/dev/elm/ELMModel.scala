@@ -42,15 +42,22 @@ class ELMModel(override val uid: String, val modelBeta: BDV[Double])
   //FIXME this is hard-coded for now ...
   override val numFeatures: Int = 6
   // Get the number of features by peeking at the first row in the dataset
-  override val numFeatures: Int = ds.select(col($(featuresCol))).head.get(0).asInstanceOf[Vector].size
+  //override val numFeatures: Int = ds.select(col($(featuresCol))).head.get(0).asInstanceOf[Vector].size
 
   override def transformSchema(schema: StructType): StructType = super.transformSchema(schema)
 
   /** Takes a dataframe, uses beta and ouputs a vector of classification labels */
-  override def transform(ds: Dataset[_]): DataFrame = {
-    transformSchema(ds.schema, logging = true)
+//  override def transform(ds: Dataset[_]): DataFrame = {
+//    transformSchema(ds.schema, logging = true)
+//
+//
+//    val eLMClassifierAlgo = new ELMClassifierAlgo(ds, labels, af: activationFunc = getActivationFunc)
+//    this.getPredictionCol = eLMClassifierAlgo.predictAllLabels(ds)
+//
+//  }
 
-
+  def predictRaw(features: SDV) :Vector = {
+    ???
   }
 
   /**
@@ -60,15 +67,15 @@ class ELMModel(override val uid: String, val modelBeta: BDV[Double])
     * Need to update this function as originally predictRaw was based on coefficients, which is a vector of numFeatures
     * Our predictRaw needs to be based on beta so I'm not sure how to calculate it
     */
-  override def predictRaw(features: Vector): Vector = {
-
-    //coefficients is a Vector of length numFeatures: val coefficients = Vectors.zeros(numFeatures)
-    val coefficientsArray = coefficients.toArray
-    // This matrix is transposed so that the matrix multiplication works. Needs to have (numFeatures) columns and 1 row.
-    // Otherwise we get: java.lang.IllegalArgumentException: requirement failed: The columns of A don't match the number of elements of x. A: 1, x: 6
-    val coefficientsMatrix: SparkDenseMatrix = new SparkDenseMatrix(1, numFeatures, coefficientsArray)
-    val margin: Array[Double] = coefficientsMatrix.multiply(features).toArray // contains a single element
-    val rawPredictions: Array[Double] = Array(-margin(0),margin(0))
-    new SparkDenseVector(rawPredictions)
-  }
+//  override def predictRaw(features: Vector): Vector = {
+//
+//    //coefficients is a Vector of length numFeatures: val coefficients = Vectors.zeros(numFeatures)
+//    val coefficientsArray = coefficients.toArray
+//    // This matrix is transposed so that the matrix multiplication works. Needs to have (numFeatures) columns and 1 row.
+//    // Otherwise we get: java.lang.IllegalArgumentException: requirement failed: The columns of A don't match the number of elements of x. A: 1, x: 6
+//    val coefficientsMatrix: SparkDenseMatrix = new SparkDenseMatrix(1, numFeatures, coefficientsArray)
+//    val margin: Array[Double] = coefficientsMatrix.multiply(features).toArray // contains a single element
+//    val rawPredictions: Array[Double] = Array(-margin(0),margin(0))
+//    new SparkDenseVector(rawPredictions)
+//  }
 }

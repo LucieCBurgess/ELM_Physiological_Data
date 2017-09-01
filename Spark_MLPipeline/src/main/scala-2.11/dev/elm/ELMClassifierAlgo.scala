@@ -53,7 +53,8 @@ sealed class ELMClassifierAlgo protected (val ds: Dataset[_], val labels: SDV, v
 
   /**
     * Predicts label for a single training sample
-    * @param feature the vector of features for a single training sample (a row)
+    * //FIXME - need to work out how to extract a single row from X. Grrr!
+    * @param feature the vector of features for a single training sample (a row).
     * @param beta the output weights calculated in training the model
     * @return the raw predicted label - needs checking!!
     */
@@ -63,12 +64,11 @@ sealed class ELMClassifierAlgo protected (val ds: Dataset[_], val labels: SDV, v
   }
 
   /**
-    * Predicts labels vector from the input features matrix
-    * @param X the features matrix
+    * Predicts labels vector from the input features matrix, X
     * @param beta the output weights calculated by the model
     * @return SDV of predicted labels from an input dataset of features.
     */
-  def predictAllLabels(X: BDM[Double], beta: BDV[Double]): SDV = {
+  def predictAllLabels(beta: BDV[Double]): SDV = {
 
     val predictedLabels = new Array[Double](N)
     for (i <- 0 until N) {
