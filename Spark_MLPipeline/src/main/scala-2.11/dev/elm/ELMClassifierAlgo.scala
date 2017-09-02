@@ -20,7 +20,6 @@ import org.apache.spark.sql.Dataset
   * Extends ELMClassifier so we have access to the parameters featuresCol, labelCol
   */
 
-//FIXME don't want to pass the hidden nodes or activation func through to the Algo?? Have already been set as parameters in Classifier
 sealed class ELMClassifierAlgo (val ds: Dataset[_], hiddenNodes: Int, af: String)
   extends ELMClassifier with SparkSessionWrapper {
 

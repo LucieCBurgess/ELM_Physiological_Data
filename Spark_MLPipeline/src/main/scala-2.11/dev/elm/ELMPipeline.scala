@@ -58,12 +58,12 @@ object ELMPipeline extends SparkSessionWrapper {
 
 
     val featureAssembler = new VectorAssembler().setInputCols(featureCols).setOutputCol("features")
-    // pipelineStages += featureAssembler KEEP THIS OUT - pipelineStages not picking up transform method correctly
+    pipelineStages += featureAssembler //KEEP THIS OUT - pipelineStages not picking up transform method correctly??
 
     /** Add the features column, "features", to the input data frame as the pipelineStages is not picking this up correctly */
-    val preparedData = featureAssembler.transform(data)
+    //val preparedData = featureAssembler.transform(data)
 
-    val featuresDF = preparedData.toDF("acc_Chest_X", "acc_Chest_Y", "acc_Chest_Z", "acc_Arm_X", "acc_Arm_Y", "acc_Arm_Z")
+    //val featuresDF = preparedData.toDF("acc_Chest_X", "acc_Chest_Y", "acc_Chest_Z", "acc_Arm_X", "acc_Arm_Y", "acc_Arm_Z")
 
     /** Create the classifier, set parameters for training */
     val elm = new ELMClassifier()
@@ -82,7 +82,7 @@ object ELMPipeline extends SparkSessionWrapper {
     /** UseFracTest to set up the (trainData, testData) tuple and randomly split the preparedData */
     val train: Double = 1-elm.getFracTest
     val test: Double = elm.getFracTest
-    val Array(trainData, testData) = preparedData.randomSplit(Array(train, test), seed = 12345)
+    val Array(trainData, testData) = data.randomSplit(Array(train, test), seed = 12345) // was preparedData
 
     /** Fit the pipeline, which includes training the model, on the preparedData */
     val startTime = System.nanoTime()
@@ -103,7 +103,6 @@ object ELMPipeline extends SparkSessionWrapper {
     println(s"Training time: $trainingTime seconds")
 
     /** Evaluate the model on the training and test data */
-    //val elmModel = pipelineModel.stages.last.asInstanceOf[ELMModel]
     val predictionsTrain = elmModel.transform(trainData).cache()
     println(s"The schema for the predicted dataset based on the training data is ${predictionsTrain.printSchema}")
     predictionsTrain.printSchema
