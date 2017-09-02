@@ -35,8 +35,11 @@ sealed class ELMClassifierAlgo (val ds: Dataset[_], hiddenNodes: Int, af: String
 
   /** Step 1: randomly assign input weight w and bias b */
   val weights: BDM[Double] = BDM.rand[Double](L, X.cols)
+  println(s"*************** The number of rows for w is ${weights.rows} *****************")
+  println(s"*************** The number of coumns for w is ${weights.cols} *****************")
 
   val bias: BDV[Double] = BDV.rand[Double](L)
+  println(s"*************** The lengths of the bias vector is ${bias.length} *****************")
 
   /** Calculates the output weight vector beta of length L where L is the number of hidden nodes*/
   def calculateBeta(): BDV[Double] = {
@@ -47,7 +50,13 @@ sealed class ELMClassifierAlgo (val ds: Dataset[_], hiddenNodes: Int, af: String
         H(i, j) = chosenAF.function(weights(j, ::) * X(i, ::).t + bias(j))
 
     /** Step 3: Calculate the output weight beta. Column vector of length L */
-    val beta = pinv(H) * T // check this is of the same rank as BDV.zeros[Double](L)
+    //val pinvH = pinv(H)
+
+    println(s"*************** The number of rows for H is  ${H.rows} *****************")
+    println(s"*************** The number of cols for H is  ${H.cols} *****************")
+
+    val beta = pinv(H) * T // check this is of the same rank as BDV.zeros[Double](L) // Gives Out of Memory error
+    // val beta = H / T // H is L x N so 10 x 35,000
     beta
   }
 
@@ -67,15 +76,6 @@ sealed class ELMClassifierAlgo (val ds: Dataset[_], hiddenNodes: Int, af: String
 
 
   // ******************************** Data-wrangling helper functions *******************************
-  /**
-    * Helper function to compute an array from the dataset features
-    * @param ds the dataset to be operated upon
-    * @return underlying array of values, in the form of Doubles.
-    */
-  private def computeFeaturesArray(ds: Dataset[_]) :Array[Double] = {
-    val array: Array[Double] = ds.select(col($(featuresCol))).as[Double].collect()
-    array
-  }
 
   /**
     * Helper function to select features from a Spark dataset and return as a Breeze Dense Matrix. This allows pinv to be used
@@ -84,9 +84,13 @@ sealed class ELMClassifierAlgo (val ds: Dataset[_], hiddenNodes: Int, af: String
     */
   private def computeX(ds: Dataset[_]): BDM[Double] = {
 
-    //val array2: Array[Double] = ds.select("features").toDF().collect.map(_.getDouble(0))
-    val array: Array[Double] = ds.select(col($(featuresCol))).as[Double].collect()
-    val numFeatures: Int = ds.select(col($(featuresCol))).head.get(0).asInstanceOf[Vector].size
+    //val array = ds.select(col($(featuresCol))).rdd.flatMap(r => r.getAs[Vector](0).toArray).collect
+    val array = ds.select("features").rdd.flatMap(r => r.getAs[Vector](0).toArray).collect
+    println(s"The size of the features array is ${array.length} *************")
+    val numFeatures = 6
+    //val numFeatures: Int = ds.select("features").head.get(0).asInstanceOf[Vector].size
+    println(s"The number of features is ${numFeatures} ************* (should be 6)")
+    println(s"The size of the BDM is ${ds.count.toInt} rows, ${numFeatures} cols ***********")
     new BDM(ds.count.toInt, numFeatures, array)
   }
 
@@ -97,8 +101,11 @@ sealed class ELMClassifierAlgo (val ds: Dataset[_], hiddenNodes: Int, af: String
     */
   private def computeT(ds: Dataset[_]): BDV[Double] = {
 
-    //val array3: Array[Double] = ds.select(col("labels")).toDF().collect().map(_.getDouble(0))
-    val array: Array[Double] = ds.select(col($(labelCol))).as[Double].collect()
+    //val array = ds.select(col($(labelCol))).rdd.flatMap(r => r.getAs[Vector](0).toArray).collect
+    //val array = ds.select("features").rdd.flatMap(r => r.getAs[Vector](0).toArray).collect
+    //val array = ds.select("binaryLabel").rdd.flatMap(r => r.getAs[Double].toArray).collect
+    val array = ds.select("binaryLabel").as[Double].collect()
+    val array2 = ds.select("binaryLabel").rdd.map( r => r.getAs[Double](0)).collect
     new BDV(array)
   }
 }

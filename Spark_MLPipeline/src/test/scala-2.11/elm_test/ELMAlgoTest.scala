@@ -36,7 +36,7 @@ class ELMAlgoTest extends FunSuite with SparkSessionTestWrapper {
   val datasetSize: Int = data.count().toInt
   val featureCols = Array("acc_Chest_X", "acc_Chest_Y", "acc_Chest_Z")
   val featureAssembler = new VectorAssembler().setInputCols(featureCols).setOutputCol("features")
-  val preparedData: DataFrame = featureAssembler.transform(data)
+  val dataWithFeatures: DataFrame = featureAssembler.transform(data)
 
   test("[01 Vector assembler adds output column of features and can be added to pipeline") {
 
@@ -55,9 +55,17 @@ class ELMAlgoTest extends FunSuite with SparkSessionTestWrapper {
 
   test("[02] Can create an array of doubles from a single DataFrame column") {
 
-    val array: Array[Double] = preparedData.select("acc_Chest_X").as[Double].collect()
+    val array: Array[Double] = dataWithFeatures.select("acc_Chest_X").as[Double].collect()
     assertResult(array.length) {
-      preparedData.count().toInt
+      dataWithFeatures.count().toInt
+    }
+  }
+
+  test("[04] Can create an array of all the data in a features Vector") {
+
+    val array = dataWithFeatures.select("features").rdd.flatMap(r => r.getAs[Vector](0).toArray).collect
+    assertResult(datasetSize * 3) {
+      array.length
     }
   }
 
@@ -77,36 +85,27 @@ class ELMAlgoTest extends FunSuite with SparkSessionTestWrapper {
     val transformed = new Pipeline().setStages(indexers :+ assembler :+ slicer)
       .fit(data)
       .transform(data)
-
     transformed.show()
-  }
-
-  test("[04] Can create an array of all the data in a features Vector") {
-
-    //val headers = data.schema.collect{ case StructField(name, DoubleType, nullable, meta) => name}
-    // Gives an error: cannot cast Vector to Double type. The sliced features are being returned as Vectors.
-
-    val featureCols = Array("acc_Chest_X", "acc_Chest_Y", "acc_Chest_Z")
-    //val featureColsIndex = featureCols.map(c => s"${c}_index")
-
-    val featureSlicers: Seq[VectorSlicer] = featureCols.map {
-      col => new VectorSlicer().setInputCol("features").setOutputCol(s"${col}_sliced").setNames(Array(s"${col}"))
-    }
-
-    //val output = featureSlicers.map(f => f.transform(preparedData).select(f.getOutputCol).as[Double].collect)
-
-    val output2: Seq[Vector] = featureSlicers.map(f => f.transform(preparedData).select(f.getOutputCol).asInstanceOf[Vector])
-
-    val output3 = output2.flatMap(v => v.toArray)
-
-    //val array = output.flatten.toArray
-    println(s"************** ${output3.length} *************")
-
   }
 }
 
+//val headers = data.schema.collect{ case StructField(name, DoubleType, nullable, meta) => name}
+// Gives an error: cannot cast Vector to Double type. The sliced features are being returned as Vectors.
+//val featureColsIndex = featureCols.map(c => s"${c}_index")
 
 //  This doesn't work, gives a casting error
 //    val features: Vector = preparedData.select("features").asInstanceOf[Vector]
 //    val array = features.toArray
 //    println(array.toString)}
+
+//    val featureSlicers: Seq[VectorSlicer] = featureCols.map {
+//      col => new VectorSlicer().setInputCol("features").setOutputCol(s"${col}_sliced").setNames(Array(s"${col}"))
+//    }
+//
+//    //val output = featureSlicers.map(f => f.transform(preparedData).select(f.getOutputCol).as[Double].collect)
+//
+//    val output2: Seq[Vector] = featureSlicers.map(f => f.transform(dataWithFeatures).select(f.getOutputCol).asInstanceOf[Vector])
+//
+//    val output3 = output2.flatMap(v => v.toArray)
+//
+//    //val array = output.flatten.toArray

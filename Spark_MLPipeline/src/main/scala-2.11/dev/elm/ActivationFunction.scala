@@ -9,6 +9,7 @@ class ActivationFunction(val af: String) {
     case "sigmoid" => ActivationFuncSigmoid.sigmoid
     case "tanh" => ActivationFuncTanh.tanh
     case "rbf" => ActivationFuncRBF.rbf
+    case "step" => ActivationFuncStep.step
     case _ => throw new IllegalArgumentException("This activation function is not accepted. Please choose one of the available" +
       "activation functions")
   }
@@ -26,4 +27,9 @@ object ActivationFuncTanh {
 //FIXME - not yet implemented
 object ActivationFuncRBF {
   def rbf(x: Double): Double = ???
+}
+
+//FIXME - not yet implemented
+object ActivationFuncStep {
+  def step(x: Double): Double = ???
 }

@@ -70,7 +70,7 @@ object ELMPipeline extends SparkSessionWrapper {
       .setFeaturesCol("features")
       .setLabelCol("binaryLabel")
       .setHiddenNodes(10)
-      .setActivationFunc("Sigmoid")
+      .setActivationFunc("sigmoid")
       .setFracTest(0.5)
 
     pipelineStages += elm
