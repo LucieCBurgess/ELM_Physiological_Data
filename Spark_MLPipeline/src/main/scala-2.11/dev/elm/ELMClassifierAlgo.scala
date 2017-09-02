@@ -21,19 +21,21 @@ import org.apache.spark.sql.Dataset
   */
 
 //FIXME don't want to pass the hidden nodes or activation func through to the Algo?? Have already been set as parameters in Classifier
-sealed class ELMClassifierAlgo (val ds: Dataset[_]) extends ELMClassifier with SparkSessionWrapper {
+sealed class ELMClassifierAlgo (val ds: Dataset[_], hiddenNodes: Int, af: String)
+  extends ELMClassifier with SparkSessionWrapper {
 
   import spark.implicits._
 
   private val X: BDM[Double] = computeX(ds) //features matrix
   private val N: Int = X.rows // Number of training samples
-  private val L: Int = getHiddenNodes // Number of hidden nodes, parameter set in ELMClassifier
+  private val L: Int = hiddenNodes // Number of hidden nodes, parameter set in ELMClassifier
   private val H: BDM[Double] = BDM.zeros[Double](N, L) //Hidden layer output matrix, initially empty
   private val T: BDV[Double] = computeT(ds) //labels vector
-  private val chosenAF = new ActivationFunction(getActivationFunc) //activation function, set in ELMClassifier
+
+  val chosenAF = new ActivationFunction(af) //activation function, set in ELMClassifier
 
   /** Step 1: randomly assign input weight w and bias b */
-  val w: BDM[Double] = BDM.rand[Double](L, X.cols)
+  val weights: BDM[Double] = BDM.rand[Double](L, X.cols)
 
   val bias: BDV[Double] = BDV.rand[Double](L)
 
@@ -43,53 +45,22 @@ sealed class ELMClassifierAlgo (val ds: Dataset[_]) extends ELMClassifier with S
     /** Step2: calculate the hidden layer output matrix H */
     for (i <- 0 until N)
       for (j <- 0 until L)
-        H(i, j) = chosenAF.function(w(j, ::) * X(i, ::).t + bias(j))
+        H(i, j) = chosenAF.function(weights(j, ::) * X(i, ::).t + bias(j))
 
     /** Step 3: Calculate the output weight beta. Column vector of length L */
     val beta = pinv(H) * T // check this is of the same rank as BDV.zeros[Double](L)
     beta
   }
 
-  /** Calculates label predictions for this model */
-  //val predictedLabels: SDV = this.predictAllLabels(X)
+  /** Calculates label predictions for this model. Needs to be tested and moved to ELMModel */
 
-  /**
-    * Predicts label for a single training sample
-    * //FIXME - need to work out how to extract a single row from X. Grrr!
-    * @param feature the vector of features for a single training sample (a row).
-    * @param beta the output weights calculated in training the model
-    * @return the raw predicted label - needs checking!!
-    */
-  def predictLabel(feature: BDV[Double], beta: BDV[Double]): Double = {
-    val node: IndexedSeq[Double] = for (i <- 0 until L) yield (beta(i) * chosenAF.function(w(i, ::) * feature + bias(i)))
-    node.sum.round.toDouble
-  }
-
-  /**
-    * Predicts labels vector from the input features matrix, X
-    * @param beta the output weights calculated by the model
-    * @return SDV of predicted labels from an input dataset of features.
-    */
-  def predictAllLabels(beta: BDV[Double]): SDV = {
-    val predictedLabels = new Array[Double](N)
-    for (i <- 0 until N) {
-      predictedLabels(i) = predictLabel(X(i, ::).t, beta)
-    }
-    new SDV(predictedLabels)
-  }
-
-  /** Need to test this function, not convinced it's working */
-  // Returns a labels vector of length N
-  // Bit confused about whether we need to generate the bias again ... check this in test. Presumably not since L is a constant,
-  // The number of hidden nodes
   def predictAllLabelsInOneGo(ds: Dataset[_], beta: BDV[Double]) :Vector = {
 
     val datasetX: BDM[Double] = computeX(ds)
-    //val datasetL: Int = beta.length
-    val numSamples:Int = datasetX.rows //N = numSamples for the dataset
+    val numSamples:Int = datasetX.rows //N
     val predictedLabels = new Array[Double](numSamples)
     for (i <- 0 until numSamples) { // for i <- 0 until N, for j <- 0 until L
-      val node: IndexedSeq[Double] = for (j <- 0 until L) yield (beta(j) * chosenAF.function(w(j, ::) * datasetX(i, ::).t + bias(j)))
+      val node: IndexedSeq[Double] = for (j <- 0 until L) yield (beta(j) * chosenAF.function(weights(j, ::) * datasetX(i, ::).t + bias(j)))
       predictedLabels(i) = node.sum.round.toDouble
     }
     new SDV(predictedLabels)

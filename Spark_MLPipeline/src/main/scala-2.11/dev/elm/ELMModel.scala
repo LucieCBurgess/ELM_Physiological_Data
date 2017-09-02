@@ -6,84 +6,54 @@ import breeze.linalg.{DenseMatrix => BDM, DenseVector => BDV, Matrix => BM, Vect
 import dev.data_load.SparkSessionWrapper
 import org.apache.spark.ml.param.ParamMap
 import org.apache.spark.ml.util.DefaultParamsWritable
-import org.apache.spark.sql.functions.col
-import org.apache.spark.sql.types.StructType
-import org.apache.spark.sql.{DataFrame, Dataset}
-import org.apache.spark.sql.functions.col
-import org.apache.spark.sql.Dataset
 
 /**
-  * Created by lucieburgess on 27/08/2017. LOTS OF WORK to do, this does not compile ...
-  * This class is a Transformer according to the Spark Pipeline model
-  * Note for each Estimator there is a companion class, Estimator model, which applies the Estimator to a dataset
+  * Created by lucieburgess on 27/08/2017. As of 2/09/2017, seem to be making progress.
+  * This class is a Transformer according to the Spark Pipeline model, and extends ClassificationModel
+  * Note for each Transformer there is a companion class, Estimator, which applies the Estimator to a dataset and trains the model
   *
   * This uses the default implementation of transform(), which reads column "features" and
   * outputs columns "prediction" and "rawPrediction" based on the ELMClassifier trained using column "features".
+  * It also uses the default implementation of transformSchema(schema: StructType).
   *
   * This uses the default implementation of predict(), which chooses the label corresponding to
   * the maximum value returned by [[predictRaw()]], as stated in the Classifier Model API
   *
-  * It also uses the default implementation of transform(ds: DataSet) and transformSchema( schema: StructType) in the Predicotr model.
-  * Note these methods are not passing correctly to the Pipeline API due to some bug in the Spark source code.
-  * As a result the features vector is not passing correctly through from ELMClassifier to ELMModel
-  * Therefore I have added the features vector manually to the DataFrame used in the pipeline.
-  * // was class ELMModel (override val uid: String, val coefficients: Vector)
   */
-class ELMModel(override val uid: String, val modelBeta: BDV[Double])
+class ELMModel(override val uid: String, val modelBeta: BDV[Double], val modelBias: BDV[Double], val modelWeights: BDM[Double], val modelHiddenNodes: Int, val modelAF: ActivationFunction)
   extends ClassificationModel[Vector, ELMModel] with SparkSessionWrapper
     with ELMParams with DefaultParamsWritable {
 
   import spark.implicits._
 
   override def copy(extra: ParamMap): ELMModel = {
-    val copied = new ELMModel(uid, modelBeta)
+    val copied = new ELMModel(uid, modelBeta, modelBias, modelWeights, modelHiddenNodes, modelAF)
     copyValues(copied, extra).setParent(parent)
   }
 
   /** Number of classes the label can take. 2 indicates binary classification */
   override val numClasses: Int = 2
 
-  /** Number of features the model was trained on */
-  //FIXME this is hard-coded for now ...
-  override val numFeatures: Int = 6
-  // Get the number of features by peeking at the first row in the dataset
-  //override val numFeatures: Int = ds.select(col($(featuresCol))).head.get(0).asInstanceOf[Vector].size
-
-  //override def transformSchema(schema: StructType): StructType = super.transformSchema(schema)
-
-  /** From the ClassifierModel API:
-    *
-    * @param ds the dataset which includes the features. (Original signature: def predictRaw(features: Features.Type) :Vector
-    * @return
+  /**
+    * @param features, the vector of features being input into the model
+    * @return vector where element i is the raw prediction for label i. This raw prediction may be any real number,
+    *         where a larger value indicates greater confidence for that label
+    *         The underlying method in ClassificationModel then predicts raw2prediction, which given a vector of raw predictions
+    *         selects the predicted labels. raw2prediction can be overridden to support thresholds which favour particular labels.
     */
-  //protected def predictRaw(features: Dataset[_]): Vector = {
-//    val eLMClassifierAlgo = new ELMClassifierAlgo(features)
-//    val values: Vector = eLMClassifierAlgo.predictAllLabelsInOneGo(features, modelBeta)
-//    values
-//  }
-
   override protected def predictRaw(features: Vector): Vector = {
-    val eLMClassifierAlgo = new ELMClassifierAlgo(features)
-    val values: Vector = eLMClassifierAlgo.predictAllLabelsInOneGo(features, modelBeta)
-    values
+
+      val array: Array[Double] = features.toArray
+      val X: BDM[Double] = new BDM(features.size, numFeatures, array) //numFeatures is calculated by Classifier and passed to ClassificationModel as part of the API
+      val beta = modelBeta
+      val L = modelHiddenNodes
+      val bias = modelBias
+      val w = modelWeights
+      val predictedLabels = new Array[Double](features.size) // length of features vector should be number of training samples
+      for (i <- 0 until features.size) { // for i <- 0 until N, for j <- 0 until L
+      val node: IndexedSeq[Double] = for (j <- 0 until L) yield (beta(j) * modelAF.function(w(j, ::) * X(i, ::).t + bias(j)))
+        predictedLabels(i) = node.sum.round.toDouble
+      }
+      new SDV(predictedLabels)
   }
 }
-
-  /**
-    * Raw prediction for every possible label. Fairly simple implementation based on dot product of (coefficients, features)
-    * NB. BLAS not available so had to convert structures to arrays then to matrices and use Spark DenseMatrix class
-    * to do matrix mulitplication
-    * Need to update this function as originally predictRaw was based on coefficients, which is a vector of numFeatures
-    * Our predictRaw needs to be based on beta so I'm not sure how to calculate it
-    */
-//  override def predictRaw(features: Vector): Vector = {
-//
-//    //coefficients is a Vector of length numFeatures: val coefficients = Vectors.zeros(numFeatures)
-//    val coefficientsArray = coefficients.toArray
-//    // This matrix is transposed so that the matrix multiplication works. Needs to have (numFeatures) columns and 1 row.
-//    // Otherwise we get: java.lang.IllegalArgumentException: requirement failed: The columns of A don't match the number of elements of x. A: 1, x: 6
-//    val coefficientsMatrix: SparkDenseMatrix = new SparkDenseMatrix(1, numFeatures, coefficientsArray)
-//    val margin: Array[Double] = coefficientsMatrix.multiply(features).toArray // contains a single element
-//    val rawPredictions: Array[Double] = Array(-margin(0),margin(0))
-//    new SparkDenseVector(rawPredictions)
-//  }

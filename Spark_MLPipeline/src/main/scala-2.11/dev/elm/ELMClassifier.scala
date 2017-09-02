@@ -55,11 +55,19 @@ class ELMClassifier(val uid: String) extends Classifier[Vector, ELMClassifier, E
     // This is used by ELMClassifierAlgo to calculate the output weight vector beta from the features
     // NB. ELMClassifierAlgo takes the features as a matrix, not a Vector of all features together so some data wrangling might be necessary here
 
-    val modelBeta = new ELMClassifierAlgo(ds).calculateBeta()
+    val modelHiddenNodes: Int = this.getHiddenNodes
+    val af: String = this.getActivationFunc
+
+    val eLMClassifierAlgo = new ELMClassifierAlgo(ds, modelHiddenNodes, af)
+    val modelBeta = eLMClassifierAlgo.calculateBeta()
+    val modelBias = eLMClassifierAlgo.bias
+    val modelWeights = eLMClassifierAlgo.weights
+    val modelAF: ActivationFunction = eLMClassifierAlgo.chosenAF
+
     // beta is effectively the coefficients and then we write transform in ELMModel,
     // or alternatively in ELMClassifierAlgo and pass it back to ELMModel. The transform is essentially the prediction.
 
-    val model = new ELMModel(uid, modelBeta).setParent(this)
+    val model = new ELMModel(uid, modelBeta, modelBias, modelWeights, modelHiddenNodes, modelAF).setParent(this)
     model
   }
 }
