@@ -3,11 +3,14 @@ package dev.elm
 import org.apache.spark.ml.classification.ClassificationModel
 import org.apache.spark.ml.linalg.{Vector, DenseMatrix => SDM, DenseVector => SDV}
 import breeze.linalg.{DenseMatrix => BDM, DenseVector => BDV, Matrix => BM, Vector => BV}
+import dev.data_load.SparkSessionWrapper
 import org.apache.spark.ml.param.ParamMap
 import org.apache.spark.ml.util.DefaultParamsWritable
 import org.apache.spark.sql.functions.col
 import org.apache.spark.sql.types.StructType
 import org.apache.spark.sql.{DataFrame, Dataset}
+import org.apache.spark.sql.functions.col
+import org.apache.spark.sql.Dataset
 
 /**
   * Created by lucieburgess on 27/08/2017. LOTS OF WORK to do, this does not compile ...
@@ -27,8 +30,10 @@ import org.apache.spark.sql.{DataFrame, Dataset}
   * // was class ELMModel (override val uid: String, val coefficients: Vector)
   */
 class ELMModel(override val uid: String, val modelBeta: BDV[Double])
-  extends ClassificationModel[Vector, ELMModel]
+  extends ClassificationModel[Vector, ELMModel] with SparkSessionWrapper
     with ELMParams with DefaultParamsWritable {
+
+  import spark.implicits._
 
   override def copy(extra: ParamMap): ELMModel = {
     val copied = new ELMModel(uid, modelBeta)
@@ -44,21 +49,25 @@ class ELMModel(override val uid: String, val modelBeta: BDV[Double])
   // Get the number of features by peeking at the first row in the dataset
   //override val numFeatures: Int = ds.select(col($(featuresCol))).head.get(0).asInstanceOf[Vector].size
 
-  override def transformSchema(schema: StructType): StructType = super.transformSchema(schema)
+  //override def transformSchema(schema: StructType): StructType = super.transformSchema(schema)
 
-  /** Takes a dataframe, uses beta and ouputs a vector of classification labels */
-//  override def transform(ds: Dataset[_]): DataFrame = {
-//    transformSchema(ds.schema, logging = true)
-//
-//
-//    val eLMClassifierAlgo = new ELMClassifierAlgo(ds, labels, af: activationFunc = getActivationFunc)
-//    this.getPredictionCol = eLMClassifierAlgo.predictAllLabels(ds)
-//
+  /** From the ClassifierModel API:
+    *
+    * @param ds the dataset which includes the features. (Original signature: def predictRaw(features: Features.Type) :Vector
+    * @return
+    */
+  //protected def predictRaw(features: Dataset[_]): Vector = {
+//    val eLMClassifierAlgo = new ELMClassifierAlgo(features)
+//    val values: Vector = eLMClassifierAlgo.predictAllLabelsInOneGo(features, modelBeta)
+//    values
 //  }
 
-  def predictRaw(features: SDV) :Vector = {
-    ???
+  override protected def predictRaw(features: Vector): Vector = {
+    val eLMClassifierAlgo = new ELMClassifierAlgo(features)
+    val values: Vector = eLMClassifierAlgo.predictAllLabelsInOneGo(features, modelBeta)
+    values
   }
+}
 
   /**
     * Raw prediction for every possible label. Fairly simple implementation based on dot product of (coefficients, features)
@@ -78,4 +87,3 @@ class ELMModel(override val uid: String, val modelBeta: BDV[Double])
 //    val rawPredictions: Array[Double] = Array(-margin(0),margin(0))
 //    new SparkDenseVector(rawPredictions)
 //  }
-}

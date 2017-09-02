@@ -20,15 +20,17 @@ import org.apache.spark.sql.Dataset
   * Extends ELMClassifier so we have access to the parameters featuresCol, labelCol
   */
 
-sealed class ELMClassifierAlgo protected (val ds: Dataset[_], val labels: SDV, val af: String)
-  extends ELMClassifier with SparkSessionWrapper {
+//FIXME don't want to pass the hidden nodes or activation func through to the Algo?? Have already been set as parameters in Classifier
+sealed class ELMClassifierAlgo (val ds: Dataset[_]) extends ELMClassifier with SparkSessionWrapper {
 
-  private val X: BDM[Double] = computeX(ds) // features matrix
-  private val N: Int = X.rows
-  private val L: Int = getHiddenNodes
-  private val H: BDM[Double] = BDM.zeros[Double](N, L)
-  private val T: BDV[Double] = computeT(ds)
-  private val chosenAF = new ActivationFunction(af)
+  import spark.implicits._
+
+  private val X: BDM[Double] = computeX(ds) //features matrix
+  private val N: Int = X.rows // Number of training samples
+  private val L: Int = getHiddenNodes // Number of hidden nodes, parameter set in ELMClassifier
+  private val H: BDM[Double] = BDM.zeros[Double](N, L) //Hidden layer output matrix, initially empty
+  private val T: BDV[Double] = computeT(ds) //labels vector
+  private val chosenAF = new ActivationFunction(getActivationFunc) //activation function, set in ELMClassifier
 
   /** Step 1: randomly assign input weight w and bias b */
   val w: BDM[Double] = BDM.rand[Double](L, X.cols)
@@ -59,7 +61,7 @@ sealed class ELMClassifierAlgo protected (val ds: Dataset[_], val labels: SDV, v
     * @return the raw predicted label - needs checking!!
     */
   def predictLabel(feature: BDV[Double], beta: BDV[Double]): Double = {
-    val node: IndexedSeq[Double] = for (i <- 0 until L) yield (beta(i) * chosenAF.function(w(i, ::) * feature) + bias(i))
+    val node: IndexedSeq[Double] = for (i <- 0 until L) yield (beta(i) * chosenAF.function(w(i, ::) * feature + bias(i)))
     node.sum.round.toDouble
   }
 
@@ -69,7 +71,6 @@ sealed class ELMClassifierAlgo protected (val ds: Dataset[_], val labels: SDV, v
     * @return SDV of predicted labels from an input dataset of features.
     */
   def predictAllLabels(beta: BDV[Double]): SDV = {
-
     val predictedLabels = new Array[Double](N)
     for (i <- 0 until N) {
       predictedLabels(i) = predictLabel(X(i, ::).t, beta)
@@ -77,7 +78,25 @@ sealed class ELMClassifierAlgo protected (val ds: Dataset[_], val labels: SDV, v
     new SDV(predictedLabels)
   }
 
-  // ******************************** Helper functions *******************************
+  /** Need to test this function, not convinced it's working */
+  // Returns a labels vector of length N
+  // Bit confused about whether we need to generate the bias again ... check this in test. Presumably not since L is a constant,
+  // The number of hidden nodes
+  def predictAllLabelsInOneGo(ds: Dataset[_], beta: BDV[Double]) :Vector = {
+
+    val datasetX: BDM[Double] = computeX(ds)
+    //val datasetL: Int = beta.length
+    val numSamples:Int = datasetX.rows //N = numSamples for the dataset
+    val predictedLabels = new Array[Double](numSamples)
+    for (i <- 0 until numSamples) { // for i <- 0 until N, for j <- 0 until L
+      val node: IndexedSeq[Double] = for (j <- 0 until L) yield (beta(j) * chosenAF.function(w(j, ::) * datasetX(i, ::).t + bias(j)))
+      predictedLabels(i) = node.sum.round.toDouble
+    }
+    new SDV(predictedLabels)
+  }
+
+
+  // ******************************** Data-wrangling helper functions *******************************
   /**
     * Helper function to compute an array from the dataset features
     * @param ds the dataset to be operated upon

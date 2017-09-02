@@ -40,7 +40,7 @@ class ELMClassifier(val uid: String) extends Classifier[Vector, ELMClassifier, E
     */
   override def train(ds: Dataset[_]): ELMModel = {
 
-    import ds.sparkSession.implicits._
+    import spark.implicits._ // was import ds.sparkSession.implicits._ ... does it matter?
     //transformSchema(ds.schema, logging = true) // if you don't include this line you don't get a features column
     ds.cache()
     ds.printSchema()
@@ -55,7 +55,7 @@ class ELMClassifier(val uid: String) extends Classifier[Vector, ELMClassifier, E
     // This is used by ELMClassifierAlgo to calculate the output weight vector beta from the features
     // NB. ELMClassifierAlgo takes the features as a matrix, not a Vector of all features together so some data wrangling might be necessary here
 
-    val modelBeta = new ELMClassifierAlgo(ds, hiddenNodes, "sigmoid").calculateBeta()
+    val modelBeta = new ELMClassifierAlgo(ds).calculateBeta()
     // beta is effectively the coefficients and then we write transform in ELMModel,
     // or alternatively in ELMClassifierAlgo and pass it back to ELMModel. The transform is essentially the prediction.
 
