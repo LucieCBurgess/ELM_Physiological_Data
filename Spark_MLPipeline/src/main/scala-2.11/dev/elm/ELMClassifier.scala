@@ -2,12 +2,12 @@ package dev.elm
 
 import dev.data_load.SparkSessionWrapper
 import org.apache.spark.ml.classification.Classifier
-import org.apache.spark.ml.linalg.{Vector, DenseVector => SDV}
+import org.apache.spark.ml.linalg.{Vector, DenseVector => SDV, DenseMatrix => SDM}
 import org.apache.spark.ml.param.ParamMap
 import org.apache.spark.ml.util.{DefaultParamsReadable, DefaultParamsWritable, Identifiable}
 import org.apache.spark.sql.functions._
 import org.apache.spark.sql.{DataFrame, Dataset}
-import breeze.linalg.{DenseVector => BDV}
+import breeze.linalg.{DenseVector => BDV, DenseMatrix => BDM}
 
 /**
   * Created by lucieburgess on 27/08/2017.
@@ -18,7 +18,7 @@ import breeze.linalg.{DenseVector => BDV}
   * Clean version which uses the DeveloperAPI example
   */
 class ELMClassifier(val uid: String) extends Classifier[Vector, ELMClassifier, ELMModel]
-  with ELMParams with DefaultParamsWritable with SparkSessionWrapper {
+  with ELMParams with DefaultParamsWritable {
 
   def this() = this(Identifiable.randomUID("ELM Estimator algorithm which includes train() method"))
 
@@ -40,7 +40,7 @@ class ELMClassifier(val uid: String) extends Classifier[Vector, ELMClassifier, E
     */
   override def train(ds: Dataset[_]): ELMModel = {
 
-    import spark.implicits._ // was import ds.sparkSession.implicits._ ... does it matter?
+    import ds.sparkSession.implicits._ // was import ds.sparkSession.implicits._ ... does it matter?
     //transformSchema(ds.schema, logging = true) // if you don't include this line you don't get a features column
     ds.cache()
     ds.printSchema()
@@ -48,26 +48,20 @@ class ELMClassifier(val uid: String) extends Classifier[Vector, ELMClassifier, E
     val numClasses = getNumClasses(ds)
     println(s"This is a binomial classifier and the number of class should be 2: it is $numClasses")
 
-    val groupedByLabel = ds.select(col($(labelCol)).as[Double]).groupByKey(x => x)
-    println(s"The number of records in each class is: $groupedByLabel")
 
-    //val X: SDM[Double] = ds.select("features") // put each training sample of features into an input Matrix, called features
-    // This is used by ELMClassifierAlgo to calculate the output weight vector beta from the features
-    // NB. ELMClassifierAlgo takes the features as a matrix, not a Vector of all features together so some data wrangling might be necessary here
+    val modelHiddenNodes: Int = getHiddenNodes
+    val af: String = getActivationFunc
 
-    val modelHiddenNodes: Int = this.getHiddenNodes
-    val af: String = this.getActivationFunc
-
-    val eLMClassifierAlgo = new ELMClassifierAlgo(ds, modelHiddenNodes, af)
-    val modelBeta = eLMClassifierAlgo.calculateBeta()
-    val modelBias = eLMClassifierAlgo.bias
-    val modelWeights = eLMClassifierAlgo.weights
-    val modelAF: ActivationFunction = eLMClassifierAlgo.chosenAF
+    val eLMClassifierAlgo = new ELMClassifierAlgo(ds, modelHiddenNodes, af) // Changed from ELMClassifierAlgo
+    val modelBias: BDM[Double] = eLMClassifierAlgo.bias
+    val modelWeights: BDM[Double] = eLMClassifierAlgo.weights
+    val modelBeta: BDV[Double] = eLMClassifierAlgo.calculateBeta()
+    val modelAF: ActivationFunction = eLMClassifierAlgo.chosenAF // has to be of type ActivationFunc not String
 
     // beta is effectively the coefficients and then we write transform in ELMModel,
     // or alternatively in ELMClassifierAlgo and pass it back to ELMModel. The transform is essentially the prediction.
 
-    val model = new ELMModel(uid, modelBeta, modelBias, modelWeights, modelHiddenNodes, modelAF).setParent(this)
+    val model = new ELMModel(uid, modelBias, modelWeights, modelBeta, modelHiddenNodes, modelAF).setParent(this)
     model
   }
 }

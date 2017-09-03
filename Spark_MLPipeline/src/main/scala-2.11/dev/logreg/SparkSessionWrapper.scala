@@ -1,4 +1,4 @@
-package dev.pipeline
+package dev.logreg
 
 import org.apache.spark.sql.SparkSession
 

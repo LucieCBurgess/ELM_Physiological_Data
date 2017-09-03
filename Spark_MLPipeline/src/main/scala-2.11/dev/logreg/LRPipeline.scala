@@ -1,4 +1,4 @@
-package dev.pipeline
+package dev.logreg
 
 /**
   * Created by lucieburgess on 15/08/2017.

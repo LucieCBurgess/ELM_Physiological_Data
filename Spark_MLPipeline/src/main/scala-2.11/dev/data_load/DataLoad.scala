@@ -1,6 +1,7 @@
 package dev.data_load
 
-import org.apache.spark.sql.DataFrame
+import org.apache.spark.sql.{DataFrame, SparkSession}
+
 import scala.util.Try
 
 /**
@@ -11,7 +12,12 @@ import scala.util.Try
 //FIXME - there should be an elegant way to validate that the incoming data is in the correct format, e.g. there aren't Strings or Longs in the data instead of Doubles and Ints
 // For a good example see https://stackoverflow.com/questions/33270907/how-to-validate-contents-of-spark-dataframe
 
-object DataLoad extends SparkSessionWrapper {
+object DataLoad {
+  lazy val spark: SparkSession = SparkSession
+    .builder()
+    .master("local[4]")
+    .appName("Data_load")
+    .getOrCreate()
 
   def createDataFrame(fileName: String): Option[DataFrame] = {
 

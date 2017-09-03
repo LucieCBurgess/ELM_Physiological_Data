@@ -1,6 +1,6 @@
 package dev.pca
 
-import dev.pipeline.{LRTestParams, SparkSessionWrapper}
+import dev.logreg.{LRTestParams, SparkSessionWrapper}
 import dev.data_load.{DataLoad, MHealthUser}
 import org.apache.spark.ml.classification.{LogisticRegression, LogisticRegressionModel}
 import org.apache.spark.ml.evaluation.{BinaryClassificationEvaluator, Evaluator}

@@ -20,14 +20,14 @@ import org.apache.spark.ml.util.DefaultParamsWritable
   * the maximum value returned by [[predictRaw()]], as stated in the Classifier Model API
   *
   */
-class ELMModel(override val uid: String, val modelBeta: BDV[Double], val modelBias: BDV[Double], val modelWeights: BDM[Double], val modelHiddenNodes: Int, val modelAF: ActivationFunction)
+class ELMModel(override val uid: String, val modelBias: BDM[Double], val modelWeights: BDM[Double], val modelBeta: BDV[Double], val modelHiddenNodes: Int, val modelAF: ActivationFunction)
   extends ClassificationModel[Vector, ELMModel] with SparkSessionWrapper
     with ELMParams with DefaultParamsWritable {
 
   import spark.implicits._
 
   override def copy(extra: ParamMap): ELMModel = {
-    val copied = new ELMModel(uid, modelBeta, modelBias, modelWeights, modelHiddenNodes, modelAF)
+    val copied = new ELMModel(uid, modelBias, modelWeights, modelBeta, modelHiddenNodes, modelAF)
     copyValues(copied, extra).setParent(parent)
   }
 
@@ -50,10 +50,10 @@ class ELMModel(override val uid: String, val modelBeta: BDV[Double], val modelBi
       val bias = modelBias
       val w = modelWeights
       val predictedLabels = new Array[Double](features.size) // length of features vector should be number of training samples
-      for (i <- 0 until features.size) { // for i <- 0 until N, for j <- 0 until L
-      val node: IndexedSeq[Double] = for (j <- 0 until L) yield (beta(j) * modelAF.function(w(j, ::) * X(i, ::).t + bias(j)))
-        predictedLabels(i) = node.sum.round.toDouble
-      }
+//      for (i <- 0 until features.size) { // for i <- 0 until N, for j <- 0 until L
+//      val node: IndexedSeq[Double] = for (j <- 0 until L) yield (beta(j) * modelAF.function(w(j, ::) * X(i, ::).t + bias(j)))
+//        predictedLabels(i) = node.sum.round.toDouble
+//      }
       new SDV(predictedLabels)
   }
 }

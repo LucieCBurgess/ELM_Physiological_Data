@@ -1,7 +1,7 @@
 package dev.elm
 
-import dev.pipeline.LRTestMain.spark
-import dev.pipeline.{LRPipeline, LRTestParams, SparkSessionWrapper}
+import dev.logreg.LRTestMain.spark
+import dev.logreg.{LRPipeline, LRTestParams, SparkSessionWrapper}
 
 /**
   * Created by lucieburgess on 27/08/2017.

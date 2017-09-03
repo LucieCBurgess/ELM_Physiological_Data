@@ -21,58 +21,55 @@ import org.apache.spark.sql.Dataset
   */
 
 sealed class ELMClassifierAlgo (val ds: Dataset[_], hiddenNodes: Int, af: String)
-  extends ELMClassifier with SparkSessionWrapper {
+  extends ELMClassifier {
 
-  import spark.implicits._
+  import ds.sparkSession.implicits._
 
-  private val X: BDM[Double] = computeX(ds) //features matrix
+  private val X: BDM[Double] = extractFeaturesMatrixTranspose(ds) //features matrix
   private val N: Int = X.rows // Number of training samples
   private val L: Int = hiddenNodes // Number of hidden nodes, parameter set in ELMClassifier
   private val H: BDM[Double] = BDM.zeros[Double](N, L) //Hidden layer output matrix, initially empty
-  private val T: BDV[Double] = computeT(ds) //labels vector
+  private val T: BDV[Double] = extractLabelsVector(ds) //labels vector
 
   val chosenAF = new ActivationFunction(af) //activation function, set in ELMClassifier
 
-  /** Step 1: randomly assign input weight w and bias b */
+  /** Step 1: randomly assign input weight w and bias b
+    * weights is of rank (L x N)
+    * Bias is of rank (L x 1)
+    */
+
   val weights: BDM[Double] = BDM.rand[Double](L, X.cols)
   println(s"*************** The number of rows for w is ${weights.rows} *****************")
   println(s"*************** The number of coumns for w is ${weights.cols} *****************")
 
-  val bias: BDV[Double] = BDV.rand[Double](L)
-  println(s"*************** The lengths of the bias vector is ${bias.length} *****************")
+  val bias: BDM[Double] = BDM.rand[Double](L, 1)
+  println(s"*************** The number of rows of the bias matrix is ${bias.rows} *****************")
+  println(s"*************** The number of columns of the bias matrix is ${bias.cols} *****************")
 
   /** Calculates the output weight vector beta of length L where L is the number of hidden nodes*/
   def calculateBeta(): BDV[Double] = {
 
-    /** Step2: calculate the hidden layer output matrix H */
-    for (i <- 0 until N)
-      for (j <- 0 until L)
-        H(i, j) = chosenAF.function(weights(j, ::) * X(i, ::).t + bias(j))
+    val H = weights * X + bias
 
-    /** Step 3: Calculate the output weight beta. Column vector of length L */
-    //val pinvH = pinv(H)
+    val beta: BDV[Double] = pinv(H) * T
 
     println(s"*************** The number of rows for H is  ${H.rows} *****************")
     println(s"*************** The number of cols for H is  ${H.cols} *****************")
 
-    val beta = pinv(H) * T // check this is of the same rank as BDV.zeros[Double](L) // Gives Out of Memory error
-    // val beta = H / T // H is L x N so 10 x 35,000
     beta
   }
 
-  /** Calculates label predictions for this model. Needs to be tested and moved to ELMModel */
 
-  def predictAllLabelsInOneGo(ds: Dataset[_], beta: BDV[Double]) :Vector = {
+//    /** Step2: calculate the hidden layer output matrix H */
+//    for (i <- 0 until N)
+//      for (j <- 0 until L)
+//        H(i, j) = chosenAF.function(weights(j, ::) * X(i, ::).t + bias(j))
 
-    val datasetX: BDM[Double] = computeX(ds)
-    val numSamples:Int = datasetX.rows //N
-    val predictedLabels = new Array[Double](numSamples)
-    for (i <- 0 until numSamples) { // for i <- 0 until N, for j <- 0 until L
-      val node: IndexedSeq[Double] = for (j <- 0 until L) yield (beta(j) * chosenAF.function(weights(j, ::) * datasetX(i, ::).t + bias(j)))
-      predictedLabels(i) = node.sum.round.toDouble
-    }
-    new SDV(predictedLabels)
-  }
+    /** Step 3: Calculate the output weight beta. Column vector of length L */
+    //val pinvH = pinv(H)
+
+    //val beta: BDV[Double] = pinv(H) * T // check this is of the same rank as BDV.zeros[Double](L) // Gives Out of Memory error
+    // val beta = H / T // H is L x N so 10 x 35,000
 
 
   // ******************************** Data-wrangling helper functions *******************************
@@ -81,17 +78,17 @@ sealed class ELMClassifierAlgo (val ds: Dataset[_], hiddenNodes: Int, af: String
     * Helper function to select features from a Spark dataset and return as a Breeze Dense Matrix. This allows pinv to be used
     * @param ds the dataset being operated on, used in the ELMClassifier class
     * @return X, a BreezeDenseMatrix of the dataset feature values, to be used in the ELM algorithm above
+    * //FIXME need to check the cardinality of the array compared to the features
+    * This gives a
     */
-  private def computeX(ds: Dataset[_]): BDM[Double] = {
+  private def extractFeaturesMatrixTranspose(ds: Dataset[_]): BDM[Double] = {
 
-    //val array = ds.select(col($(featuresCol))).rdd.flatMap(r => r.getAs[Vector](0).toArray).collect
     val array = ds.select("features").rdd.flatMap(r => r.getAs[Vector](0).toArray).collect
     println(s"The size of the features array is ${array.length} *************")
-    val numFeatures = 6
-    //val numFeatures: Int = ds.select("features").head.get(0).asInstanceOf[Vector].size
-    println(s"The number of features is ${numFeatures} ************* (should be 6)")
-    println(s"The size of the BDM is ${ds.count.toInt} rows, ${numFeatures} cols ***********")
-    new BDM(ds.count.toInt, numFeatures, array)
+    val numFeatures: Int = ds.select("features").head.get(0).asInstanceOf[Vector].size
+    println(s"The number of features is ${numFeatures} ************* (should be 3)")
+    println(s"The size of the BDM is $numFeatures rows, $N cols ***********")
+    new BDM[Double](numFeatures,N,array) //NB X gets transposed again above, so no need to transpose
   }
 
   /**
@@ -99,17 +96,25 @@ sealed class ELMClassifierAlgo (val ds: Dataset[_], hiddenNodes: Int, af: String
     * @param ds the dataset being operated on, used in the ELMClassifier class
     * @return T, a BreezeDenseVector of the dataset label values, to be used in the ELM algorithm above
     */
-  private def computeT(ds: Dataset[_]): BDV[Double] = {
+  private def extractLabelsVector(ds: Dataset[_]): BDV[Double] = {
 
-    //val array = ds.select(col($(labelCol))).rdd.flatMap(r => r.getAs[Vector](0).toArray).collect
-    //val array = ds.select("features").rdd.flatMap(r => r.getAs[Vector](0).toArray).collect
-    //val array = ds.select("binaryLabel").rdd.flatMap(r => r.getAs[Double].toArray).collect
-    val array = ds.select("binaryLabel").as[Double].collect()
-    val array2 = ds.select("binaryLabel").rdd.map( r => r.getAs[Double](0)).collect
-    new BDV(array)
+    //val array = ds.select("binaryLabel").as[Double].collect()
+    val array = ds.select("binaryLabel").rdd.map( r => r.getAs[Double](0)).collect
+    new BDV[Double](array)
   }
 }
 
-
+/** Calculates label predictions for this model. Needs to be tested and moved to ELMModel */
+//def predictAllLabelsInOneGo(ds: Dataset[_], beta: BDV[Double]) :Vector = {
+//
+//  val datasetX: BDM[Double] = computeX(ds)
+//  val numSamples:Int = datasetX.rows //N
+//  val predictedLabels = new Array[Double](numSamples)
+//  for (i <- 0 until numSamples) { // for i <- 0 until N, for j <- 0 until L
+//  val node: IndexedSeq[Double] = for (j <- 0 until L) yield (beta(j) * chosenAF.function(weights(j, ::) * datasetX(i, ::).t + bias(j)))
+//  predictedLabels(i) = node.sum.round.toDouble
+//}
+//  new SDV(predictedLabels)
+//}
 
 

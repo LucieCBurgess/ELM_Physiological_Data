@@ -1,6 +1,6 @@
 package dev.elm
 
-import dev.pipeline.{LRTestParams, SparkSessionWrapper}
+import dev.logreg.{LRTestParams, SparkSessionWrapper}
 import dev.data_load.{DataLoad, MHealthUser}
 import org.apache.spark.ml.classification.{LogisticRegression, LogisticRegressionModel}
 import org.apache.spark.ml.evaluation.{BinaryClassificationEvaluator, Evaluator}
@@ -8,7 +8,7 @@ import org.apache.spark.ml.linalg.{DenseVector => SDV}
 import org.apache.spark.ml.feature.VectorAssembler
 import org.apache.spark.ml.tuning.{CrossValidator, ParamGridBuilder}
 import org.apache.spark.ml.{Pipeline, PipelineModel, PipelineStage, Transformer}
-import org.apache.spark.sql.DataFrame
+import org.apache.spark.sql.{DataFrame, SparkSession}
 import org.apache.spark.sql.catalyst.ScalaReflection
 import org.apache.spark.sql.functions._
 import org.apache.spark.sql.types.StructType
@@ -18,15 +18,19 @@ import scala.collection.mutable
 /**
   * Created by lucieburgess on 30/08/2017.
   */
-object ELMPipeline extends SparkSessionWrapper {
+object ELMPipeline {
 
   //FIXME - Not using ELMMain at this stage - need to get working without complicated Params first
+
+  lazy val spark: SparkSession = {
+    SparkSession.builder().master("local[4]").appName("ELMPipeline").getOrCreate()
+  }
 
   def main(args: Array[String]) {
 
     import spark.implicits._
 
-    val fileName: String = "mHealth_subject1.txt"
+    val fileName: String = "smalltest.txt"
 
     //def run(params: DefaultELMParams): Unit = {
 
@@ -48,7 +52,7 @@ object ELMPipeline extends SparkSessionWrapper {
       * Sets the input columns as the array of features and the output column as a new column, a vector modelFeatures
       * Add the featureAssembler to the pipeline
       */
-    val featureCols = Array("acc_Chest_X", "acc_Chest_Y", "acc_Chest_Z", "acc_Arm_X", "acc_Arm_Y", "acc_Arm_Z")
+    val featureCols = Array("acc_Chest_X", "acc_Chest_Y", "acc_Chest_Z")
     /** Parameter for input cols of the ELM, which is combined into a FeaturesCol vector in the Transformer */
     //FIXME not currently used
     val allowedInputCols: Array[String] = ScalaReflection.schemaFor[MHealthUser].dataType match {
@@ -56,14 +60,11 @@ object ELMPipeline extends SparkSessionWrapper {
       case _ => Array[String]()
     }
 
-
     val featureAssembler = new VectorAssembler().setInputCols(featureCols).setOutputCol("features")
-    pipelineStages += featureAssembler //KEEP THIS OUT - pipelineStages not picking up transform method correctly??
+    //pipelineStages += featureAssembler //KEEP THIS OUT - pipelineStages not picking up transform method correctly??
 
     /** Add the features column, "features", to the input data frame as the pipelineStages is not picking this up correctly */
-    //val preparedData = featureAssembler.transform(data)
-
-    //val featuresDF = preparedData.toDF("acc_Chest_X", "acc_Chest_Y", "acc_Chest_Z", "acc_Arm_X", "acc_Arm_Y", "acc_Arm_Z")
+    val dataWithFeatures = featureAssembler.transform(data)
 
     /** Create the classifier, set parameters for training */
     val elm = new ELMClassifier()
@@ -72,6 +73,7 @@ object ELMPipeline extends SparkSessionWrapper {
       .setHiddenNodes(10)
       .setActivationFunc("sigmoid")
       .setFracTest(0.5)
+    // add a setting for the number of features which would be useful
 
     pipelineStages += elm
     println("ELM parameters:\n" + elm.explainParams() + "\n")
@@ -82,10 +84,13 @@ object ELMPipeline extends SparkSessionWrapper {
     /** UseFracTest to set up the (trainData, testData) tuple and randomly split the preparedData */
     val train: Double = 1-elm.getFracTest
     val test: Double = elm.getFracTest
-    val Array(trainData, testData) = data.randomSplit(Array(train, test), seed = 12345) // was preparedData
+    val Array(trainData, testData) = dataWithFeatures.randomSplit(Array(train, test), seed = 12345) // was data
 
     /** Fit the pipeline, which includes training the model, on the preparedData */
     val startTime = System.nanoTime()
+
+    println(s"************* Training the model ****************")
+
     val pipelineModel: PipelineModel = pipeline.fit(trainData)
     val elmModel = pipelineModel.stages.last.asInstanceOf[ELMModel]
 
