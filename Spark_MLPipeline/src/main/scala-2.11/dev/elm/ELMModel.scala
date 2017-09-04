@@ -21,14 +21,14 @@ import org.apache.spark.ml.util.DefaultParamsWritable
   * the maximum value returned by [[predictRaw()]], as stated in the Classifier Model API
   *
   */
-class ELMModel(override val uid: String, val modelWeights: BDM[Double], val modelBias: BDM[Double], val modelBeta: BDV[Double], val modelHiddenNodes: Int, val modelAF: ActivationFunction)
+class ELMModel(override val uid: String, val modelWeights: BDM[Double], val modelBias: BDV[Double], val modelBeta: BDV[Double], val modelHiddenNodes: Int, val modelAF: ActivationFunction)
   extends ClassificationModel[Vector, ELMModel] with SparkSessionWrapper
     with ELMParams with DefaultParamsWritable {
 
   import spark.implicits._
 
   override def copy(extra: ParamMap): ELMModel = {
-    val copied = new ELMModel(uid, modelBias, modelWeights, modelBeta, modelHiddenNodes, modelAF)
+    val copied = new ELMModel(uid, modelWeights, modelBias, modelBeta, modelHiddenNodes, modelAF)
     copyValues(copied, extra).setParent(parent)
   }
 

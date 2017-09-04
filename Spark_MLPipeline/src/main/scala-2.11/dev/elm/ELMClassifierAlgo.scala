@@ -1,9 +1,8 @@
 package dev.elm
 
-import breeze.linalg.{DenseMatrix => BDM, DenseVector => BDV}
+import breeze.linalg.{*, pinv, DenseMatrix => BDM, DenseVector => BDV}
 import org.apache.spark.ml.linalg.{Vector, DenseVector => SDV}
-import breeze.linalg.pinv
-import breeze.numerics.{sigmoid}
+import breeze.numerics.sigmoid
 import dev.data_load.SparkSessionWrapper
 import org.apache.spark.sql.functions.col
 import org.apache.spark.sql.Dataset
@@ -63,9 +62,8 @@ sealed class ELMClassifierAlgo (val ds: Dataset[_], hiddenNodes: Int, af: String
   for (i <- 0 until N) yield buf += biasArray
   val replicatedBiasArray = buf.flatten.toArray
 
-  val bias :BDM[Double] = new BDM[Double](N,L,replicatedBiasArray) // bias is N x L, column vector of length L repeated N times
-  println(s"*************** The number of rows of the bias matrix is ${bias.rows} *****************")
-  println(s"*************** The number of columns of the bias matrix is ${bias.cols} *****************")
+  val bias :BDV[Double] = BDV.rand[Double](L) // bias is column vector of length L
+  println(s"*************** The number of rows of the bias matrix is ${bias.length} *****************")
 
   /**
     * Step 6: Calculate the output weight vector beta of length L where L is the number of hidden nodes
@@ -75,7 +73,9 @@ sealed class ELMClassifierAlgo (val ds: Dataset[_], hiddenNodes: Int, af: String
     */
   def calculateBeta(): BDV[Double] = {
 
-    val H = sigmoid((weights * X).t + bias) //N x L
+    val M: BDM[Double] = weights * X //L x N
+
+    val H: BDM[Double] = sigmoid((M(::,*) + bias).t) //N x L
 
     val beta: BDV[Double] = pinv(H) * T // Vector of length L
 
