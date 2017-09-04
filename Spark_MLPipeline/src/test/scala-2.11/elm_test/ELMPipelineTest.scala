@@ -54,7 +54,11 @@ class ELMPipelineTest extends FunSuite {
       assert(pipelineStages.head == featureAssembler)
     }
 
-    test("[02] Can recreate features using Vector slicer") {
+    test("[02] Using random split correctly splits the data according to splitting parameters") {
+      ??? //Not yet implemented
+    }
+
+    test("[03] Can recreate features using Vector slicer") {
 
       val featureCols = Array("acc_Chest_X", "acc_Chest_Y", "acc_Chest_Z", "acc_Arm_X", "acc_Arm_Y", "acc_Arm_Z")
       val featureColsIndex = featureCols.map(c => s"${c}_index")

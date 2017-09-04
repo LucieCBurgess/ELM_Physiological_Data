@@ -35,13 +35,13 @@ class ELMClassifier(val uid: String) extends Classifier[Vector, ELMClassifier, E
     * Implements method in org.apache.spark.ml.Predictor. This method is used by fit(). Uses the default version of transformSchema
     * Trains the model to predict the training labels based on the ELMAlgorithm class.
     * @param ds the dataset to be operated on
-    * @return an ELMModel which extends ClassificationModel with the output weight vector beta calculated, of length L,
-    *         where L is the number of hidden nodes.
+    * @return an ELMModel which extends ClassificationModel with the output weight vector modelBeta calculated, of length L,
+    *         where L is the number of hidden nodes, with modelBias function and modelWeights also calculated.
+    *         Driven by algorithm in ELMClassifierAlgo.
     */
   override def train(ds: Dataset[_]): ELMModel = {
 
-    import ds.sparkSession.implicits._ // was import ds.sparkSession.implicits._ ... does it matter?
-    //transformSchema(ds.schema, logging = true) // if you don't include this line you don't get a features column
+    import ds.sparkSession.implicits._
     ds.cache()
     ds.printSchema()
 
@@ -52,39 +52,17 @@ class ELMClassifier(val uid: String) extends Classifier[Vector, ELMClassifier, E
     val modelHiddenNodes: Int = getHiddenNodes
     val af: String = getActivationFunc
 
-    val eLMClassifierAlgo = new ELMClassifierAlgo(ds, modelHiddenNodes, af) // Changed from ELMClassifierAlgo
+    val eLMClassifierAlgo = new ELMClassifierAlgo(ds, modelHiddenNodes, af)
     val modelBias: BDM[Double] = eLMClassifierAlgo.bias
     val modelWeights: BDM[Double] = eLMClassifierAlgo.weights
     val modelBeta: BDV[Double] = eLMClassifierAlgo.calculateBeta()
     val modelAF: ActivationFunction = eLMClassifierAlgo.chosenAF // has to be of type ActivationFunc not String
 
-    // beta is effectively the coefficients and then we write transform in ELMModel,
-    // or alternatively in ELMClassifierAlgo and pass it back to ELMModel. The transform is essentially the prediction.
-
-    val model = new ELMModel(uid, modelBias, modelWeights, modelBeta, modelHiddenNodes, modelAF).setParent(this)
+    /** Return the training model */
+    val model = new ELMModel(uid, modelWeights, modelBias, modelBeta, modelHiddenNodes, modelAF).setParent(this)
     model
   }
 }
 
 /** Companion object enables deserialisation of ELMParamsMine */
 object ELMClassifier extends DefaultParamsReadable[ELMClassifier]
-
-
-/** This is the previous version using a blank coefficients vector which runs OK but doesn't actually learn anything */
-//FIXME - logic of the model would happen here.
-// Do learning to estimate the coefficients vector.
-//val coefficients = Vectors.zeros(numFeatures)
-// val model = new ELMModel (uid, coefficients).setParent(this)
-// model
-// Create a model, and return it.
-/** This is the previous version using a blank coefficients vector which runs OK but doesn't actually learn anything */
-//FIXME - logic of the model would happen here.
-// Do learning to estimate the coefficients vector.
-//val coefficients = Vectors.zeros(numFeatures)
-// val model = new ELMModel (uid, coefficients).setParent(this)
-// model
-// copyValues(model)
-//FIXME - pass one of these to ELMClassifierAlgo
-//val featuresVector: SDV = ds.select("features1", "features2", "features3").asInstanceOf[SDV]
-//val featuresColVector: DataFrame = ds.select(col($(featuresCol))) //pass this to ELMClassifierAlgo
-// val numRows = ds.count()

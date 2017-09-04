@@ -40,11 +40,12 @@ class ELMAlgoTest extends FunSuite {
 
   def extractFeaturesMatrixTranspose(ds: Dataset[_]): BDM[Double] = {
     val array = ds.select("features").rdd.flatMap(r => r.getAs[Vector](0).toArray).collect
-    new BDM[Double](numFeatures, N, array).t //NB X gets transposed again above, so no need to transpose, but will do this for t
+    new BDM[Double](numFeatures, N, array).t //NB X gets transposed again above, so no need to transpose, but will do this for testing
   }
 
   def extractFeaturesMatrix(ds: Dataset[_]): BDM[Double] = {
     val array = ds.select("features").rdd.flatMap(r => r.getAs[Vector](0).toArray).collect
+    println(s"The length of the features array is ${array.length}")
     new BDM[Double](numFeatures, N, array)
   }
 
@@ -165,8 +166,8 @@ class ELMAlgoTest extends FunSuite {
     val numFeatures: Int = dataWithFeatures.select("features").head.get(0).asInstanceOf[Vector].size
 
     val X: BDM[Double] = extractFeaturesMatrixTranspose(dataWithFeatures)
-    assert(X.rows == N)
-    assert(X.cols == numFeatures)
+    assert(X.rows == 22) // number of samples
+    assert(X.cols == 3) // number of features
     assert(X(0,0) == -9.5357)
     assert(X(7,1) == -0.017569)
     assert(X(17,2) == 0.92812)
@@ -179,9 +180,14 @@ class ELMAlgoTest extends FunSuite {
     val bias: BDM[Double] = BDM.rand[Double](L,1) // L x 1 SHOULD be L x N with each column being the same
     val weights: BDM[Double] = BDM.rand[Double](L, numFeatures) // L x numFeatures
     val X: BDM[Double] = extractFeaturesMatrix(dataWithFeatures) // numFeatures x N
-    assert(X.rows == numFeatures)
+    assert(X.rows == 3)
     assert(X.cols == 22)
     assert(X.isInstanceOf[BDM[Double]])
+
+//    def extractFeaturesMatrix(ds: Dataset[_]): BDM[Double] = {
+//      val array = ds.select("features").rdd.flatMap(r => r.getAs[Vector](0).toArray).collect
+//      new BDM[Double](numFeatures, N, array)
+//    }
 
     val Z: BDM[Double] = weights * X //L x F . F x N
     assert(Z.isInstanceOf[BDM[Double]])

@@ -32,8 +32,6 @@ object ELMPipeline {
 
     val fileName: String = "smalltest.txt"
 
-    //def run(params: DefaultELMParams): Unit = {
-
     /** Load training and test data and cache it */
     val data = DataLoad.createDataFrame(fileName) match {
       case Some(df) => df
@@ -42,6 +40,9 @@ object ELMPipeline {
         .withColumn("uniqueID", monotonically_increasing_id())
       case None => throw new UnsupportedOperationException("Couldn't create DataFrame")
     }
+
+    val Nsamples: Int = data.count().toInt
+    println(s"The number of training samples is $Nsamples")
 
     /** Set up the pipeline stages */
     val pipelineStages = new mutable.ArrayBuffer[PipelineStage]()
@@ -52,19 +53,28 @@ object ELMPipeline {
       * Sets the input columns as the array of features and the output column as a new column, a vector modelFeatures
       * Add the featureAssembler to the pipeline
       */
+
     val featureCols = Array("acc_Chest_X", "acc_Chest_Y", "acc_Chest_Z")
     /** Parameter for input cols of the ELM, which is combined into a FeaturesCol vector in the Transformer */
     //FIXME not currently used
     val allowedInputCols: Array[String] = ScalaReflection.schemaFor[MHealthUser].dataType match {
-      case s: StructType => s.fieldNames
+      case s: StructType => s.fieldNames.array
       case _ => Array[String]()
     }
 
-    val featureAssembler = new VectorAssembler().setInputCols(featureCols).setOutputCol("features")
-    //pipelineStages += featureAssembler //KEEP THIS OUT - pipelineStages not picking up transform method correctly??
+//    def checkInAllowedInputCols(feature: String): String = {
+//      if (!allowedInputCols.contains(feature)) throw new IllegalArgumentException("Feature is not in the schema")
+//      else featureCols.addString(feature)
+//    }
+//
 
-    /** Add the features column, "features", to the input data frame as the pipelineStages is not picking this up correctly */
-    val dataWithFeatures = featureAssembler.transform(data)
+    val featureAssembler = new VectorAssembler().setInputCols(featureCols).setOutputCol("features")
+    pipelineStages += featureAssembler //KEEP THIS OUT - pipelineStages not picking up transform method correctly??
+
+    /** Add the features column, "features", to the input data frame using VectorAssembler */
+    val Nsamples2: Int = data.count().toInt
+    println(s"After prepared data: The number of samples is $Nsamples2")
+
 
     /** Create the classifier, set parameters for training */
     val elm = new ELMClassifier()
@@ -84,7 +94,14 @@ object ELMPipeline {
     /** UseFracTest to set up the (trainData, testData) tuple and randomly split the preparedData */
     val train: Double = 1-elm.getFracTest
     val test: Double = elm.getFracTest
-    val Array(trainData, testData) = dataWithFeatures.randomSplit(Array(train, test), seed = 12345) // was data
+    val Array(trainData, testData) = data.randomSplit(Array(train, test), seed = 12345) // was data
+
+    val Nsamples3: Int = trainData.count().toInt
+    println(s"After splitting prepared data: The number of training samples is $Nsamples3")
+
+    val Nsamples4: Int = trainData.count().toInt
+    println(s"After splitting prepared data: The number of test samples is $Nsamples4")
+
 
     /** Fit the pipeline, which includes training the model, on the preparedData */
     val startTime = System.nanoTime()
