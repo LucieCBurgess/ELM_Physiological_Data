@@ -1,6 +1,8 @@
 package elm_test
 
-import breeze.linalg.{pinv, DenseMatrix => BDM, DenseVector => BDV}
+import breeze.linalg.{*, pinv, DenseMatrix => BDM, DenseVector => BDV}
+import breeze.linalg._
+import breeze.numerics._
 import breeze.numerics.sigmoid
 import dev.data_load.DataLoad
 import org.apache.spark.ml.linalg.Vector
@@ -45,7 +47,6 @@ class ELMAlgoTest extends FunSuite {
 
   def extractFeaturesMatrix(ds: Dataset[_]): BDM[Double] = {
     val array = ds.select("features").rdd.flatMap(r => r.getAs[Vector](0).toArray).collect
-    println(s"The length of the features array is ${array.length}")
     new BDM[Double](numFeatures, N, array)
   }
 
@@ -184,11 +185,6 @@ class ELMAlgoTest extends FunSuite {
     assert(X.cols == 22)
     assert(X.isInstanceOf[BDM[Double]])
 
-//    def extractFeaturesMatrix(ds: Dataset[_]): BDM[Double] = {
-//      val array = ds.select("features").rdd.flatMap(r => r.getAs[Vector](0).toArray).collect
-//      new BDM[Double](numFeatures, N, array)
-//    }
-
     val Z: BDM[Double] = weights * X //L x F . F x N
     assert(Z.isInstanceOf[BDM[Double]])
     assert(Z.rows == 10)
@@ -221,4 +217,51 @@ class ELMAlgoTest extends FunSuite {
     assert(beta.length == 10)
 
   }
+
+  test("[09] Can calculate H from weights, bias and X (features) using Breeze column forecasting") {
+
+    val L = 10
+    val bias: BDV[Double] = BDV.rand[Double](L) // L x 1 SHOULD be L x N with each column being the same
+    val weights: BDM[Double] = BDM.rand[Double](L, numFeatures) // L x numFeatures
+    val X: BDM[Double] = extractFeaturesMatrix(dataWithFeatures) // numFeatures x N
+    assert(X.rows == 3)
+    assert(X.cols == 22)
+    assert(X.isInstanceOf[BDM[Double]])
+
+    val Z: BDM[Double] = weights * X //L x F . F x N
+    assert(Z.isInstanceOf[BDM[Double]])
+    assert(Z.rows == 10)
+    assert(Z.cols == 22)
+
+    val M = (weights * X) //L x N
+
+    assert(M.isInstanceOf[BDM[Double]])
+    assert(M.rows == 10) // L x N
+    assert(M.cols == 22)
+
+//    val biasArray = bias.toArray // bias of Length L
+//    val buf = scala.collection.mutable.ArrayBuffer.empty[Array[Double]]
+//    for (i <- 0 until N) yield buf += biasArray
+//    val replicatedBiasArray = buf.flatten.toArray
+
+    //val bias2 :BDM[Double] = new BDM[Double](N,L,replicatedBiasArray) // bias is N x L, but the same column vector (length L) repeated N times
+
+
+    val H: BDM[Double] = sigmoid((M(::,*) + bias).t) // We want H to be N x L so that pinv(H) is L x N
+
+    assert(H.isInstanceOf[BDM[Double]]) // N x L
+    assert(H.rows == 22)
+    assert(H.cols == 10)
+
+    val T: BDV[Double] = extractLabelsMatrix(dataWithFeatures)
+
+    val beta: BDV[Double] = pinv(H) * T // (L x N) . N => gives vector of length L
+
+    assert(beta.isInstanceOf[BDV[Double]])
+    assert(beta.length == 10)
+
+  }
+
 }
+
+

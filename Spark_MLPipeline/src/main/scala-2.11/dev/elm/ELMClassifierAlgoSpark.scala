@@ -10,6 +10,7 @@ import breeze.numerics._
 /**
   * Created by lucieburgess on 03/09/2017.
   * Trying to avoid the Java heap OOM error.
+  * NOT CURRENTLY USED
   */
 sealed class ELMClassifierAlgoSpark(ds: Dataset[_], hiddenNodes: Int, af: String) extends ELMClassifier {
 
