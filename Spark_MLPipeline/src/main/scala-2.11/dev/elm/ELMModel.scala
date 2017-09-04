@@ -2,10 +2,13 @@ package dev.elm
 
 import org.apache.spark.ml.classification.ClassificationModel
 import org.apache.spark.ml.linalg.{Vector, DenseMatrix => SDM, DenseVector => SDV}
-import breeze.linalg.{DenseMatrix => BDM, DenseVector => BDV, Matrix => BM, Vector => BV}
+import breeze.linalg.{*, pinv, DenseMatrix => BDM, DenseVector => BDV, Matrix => BM, Vector => BV}
+import breeze.numerics._
 import dev.data_load.SparkSessionWrapper
 import org.apache.spark.ml.param.ParamMap
 import org.apache.spark.ml.util.DefaultParamsWritable
+import org.apache.spark.rdd.RDD
+import org.apache.spark.sql.DataFrame
 
 /**
   * Created by lucieburgess on 27/08/2017.
@@ -41,20 +44,20 @@ class ELMModel(override val uid: String, val modelWeights: BDM[Double], val mode
     *         where a larger value indicates greater confidence for that label
     *         The underlying method in ClassificationModel then predicts raw2prediction, which given a vector of raw predictions
     *         selects the predicted labels. raw2prediction can be overridden to support thresholds which favour particular labels.
+    *         NB. data.select("features") gives an instance of a dataframe, so this is the type of the features column
     */
-  override protected def predictRaw(features: Vector): Vector = {
+    def predictRaw(features: DataFrame): SDV = {
 
-      val array: Array[Double] = features.toArray
-      val X: BDM[Double] = new BDM(features.size, numFeatures, array) //numFeatures is calculated by Classifier and passed to ClassificationModel as part of the API
-      val beta = modelBeta
-      val L = modelHiddenNodes
-      val bias = modelBias
-      val w = modelWeights
-      val predictedLabels = new Array[Double](features.size) // length of features vector should be number of training samples
-//      for (i <- 0 until features.size) { // for i <- 0 until N, for j <- 0 until L
-//      val node: IndexedSeq[Double] = for (j <- 0 until L) yield (beta(j) * modelAF.function(w(j, ::) * X(i, ::).t + bias(j)))
-//        predictedLabels(i) = node.sum.round.toDouble
-//      }
-      new SDV(predictedLabels)
+    val featuresArray: Array[Double] = features.rdd.flatMap(r => r.getAs[Vector](0).toArray).collect
+    val featuresMatrix = new BDM[Double](numFeatures, features.count().toInt, featuresArray)
+
+    val bias: BDV[Double] = modelBias // L x 1
+    val weights: BDM[Double] = modelWeights //  L x numFeatures
+    val beta: BDV[Double] = modelBeta // (L x N) . N => gives vector of length L
+
+    val M = weights * featuresMatrix // L x numFeatures. numFeatures x N where N is no. of test samples. NB Features must be of size (numFeatures, N)
+    val H = sigmoid((M(::, *)) + bias) // L x numFeatures
+    val T = beta.t * H // L.(L x N) of type Transpose[DenseVector]
+    new SDV((T.t).toArray) //length N
   }
 }

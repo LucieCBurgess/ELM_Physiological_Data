@@ -57,10 +57,10 @@ sealed class ELMClassifierAlgo (val ds: Dataset[_], hiddenNodes: Int, af: String
     * I've tried this as a colum slice in Breeze but it's not working so this is a work-around
     */
   val biasVector: BDM[Double] = BDM.rand[Double](L, 1)
-  val biasArray = biasVector.toArray // bias of Length L
+  val biasArray: Array[Double] = biasVector.toArray // bias of Length L
   val buf = scala.collection.mutable.ArrayBuffer.empty[Array[Double]]
   for (i <- 0 until N) yield buf += biasArray
-  val replicatedBiasArray = buf.flatten.toArray
+  val replicatedBiasArray: Array[Double] = buf.flatten.toArray
 
   val bias :BDV[Double] = BDV.rand[Double](L) // bias is column vector of length L
   println(s"*************** The number of rows of the bias matrix is ${bias.length} *****************")

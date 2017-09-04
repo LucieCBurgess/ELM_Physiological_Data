@@ -40,6 +40,7 @@ class ELMAlgoTest extends FunSuite {
   val dataWithFeatures: DataFrame = featureAssembler.transform(data)
   val numFeatures = featureCols.length
 
+  /** NB. Do not use this function in the model, purely for testing. Use extractFeaturesMatrix instead */
   def extractFeaturesMatrixTranspose(ds: Dataset[_]): BDM[Double] = {
     val array = ds.select("features").rdd.flatMap(r => r.getAs[Vector](0).toArray).collect
     new BDM[Double](numFeatures, N, array).t //NB X gets transposed again above, so no need to transpose, but will do this for testing
@@ -221,31 +222,18 @@ class ELMAlgoTest extends FunSuite {
   test("[09] Can calculate H from weights, bias and X (features) using Breeze column forecasting") {
 
     val L = 10
-    val bias: BDV[Double] = BDV.rand[Double](L) // L x 1 SHOULD be L x N with each column being the same
+    val bias: BDV[Double] = BDV.rand[Double](L) // L x 1
     val weights: BDM[Double] = BDM.rand[Double](L, numFeatures) // L x numFeatures
     val X: BDM[Double] = extractFeaturesMatrix(dataWithFeatures) // numFeatures x N
     assert(X.rows == 3)
     assert(X.cols == 22)
     assert(X.isInstanceOf[BDM[Double]])
 
-    val Z: BDM[Double] = weights * X //L x F . F x N
-    assert(Z.isInstanceOf[BDM[Double]])
-    assert(Z.rows == 10)
-    assert(Z.cols == 22)
-
-    val M = (weights * X) //L x N
+    val M = weights * X //LXF.FxN = LxN
 
     assert(M.isInstanceOf[BDM[Double]])
     assert(M.rows == 10) // L x N
     assert(M.cols == 22)
-
-//    val biasArray = bias.toArray // bias of Length L
-//    val buf = scala.collection.mutable.ArrayBuffer.empty[Array[Double]]
-//    for (i <- 0 until N) yield buf += biasArray
-//    val replicatedBiasArray = buf.flatten.toArray
-
-    //val bias2 :BDM[Double] = new BDM[Double](N,L,replicatedBiasArray) // bias is N x L, but the same column vector (length L) repeated N times
-
 
     val H: BDM[Double] = sigmoid((M(::,*) + bias).t) // We want H to be N x L so that pinv(H) is L x N
 
@@ -255,7 +243,7 @@ class ELMAlgoTest extends FunSuite {
 
     val T: BDV[Double] = extractLabelsMatrix(dataWithFeatures)
 
-    val beta: BDV[Double] = pinv(H) * T // (L x N) . N => gives vector of length L
+    val beta: BDV[Double] = pinv(H) * T // Length L because (L x N) * N gives vector of length L
 
     assert(beta.isInstanceOf[BDV[Double]])
     assert(beta.length == 10)
