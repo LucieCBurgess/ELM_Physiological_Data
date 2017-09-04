@@ -46,18 +46,21 @@ class ELMModel(override val uid: String, val modelWeights: BDM[Double], val mode
     *         selects the predicted labels. raw2prediction can be overridden to support thresholds which favour particular labels.
     *         NB. data.select("features") gives an instance of a dataframe, so this is the type of the features column
     */
-    def predictRaw(features: DataFrame): SDV = {
+    //FIXME - re-write this function to take a Vector parameter
+    def predictRaw(features: Vector): SDV = {
 
-    val featuresArray: Array[Double] = features.rdd.flatMap(r => r.getAs[Vector](0).toArray).collect
-    val featuresMatrix = new BDM[Double](numFeatures, features.count().toInt, featuresArray)
+    //val featuresArray: Array[Double] = features.rdd.flatMap(r => r.getAs[Vector](0).toArray).collect
+      val featuresArray: Array[Double] = features.toArray
+      val featuresMatrix = new BDM[Double](numFeatures, features.size, featuresArray)
 
-    val bias: BDV[Double] = modelBias // L x 1
-    val weights: BDM[Double] = modelWeights //  L x numFeatures
-    val beta: BDV[Double] = modelBeta // (L x N) . N => gives vector of length L
+      val bias: BDV[Double] = modelBias // L x 1
+      val weights: BDM[Double] = modelWeights //  L x numFeatures
+      val beta: BDV[Double] = modelBeta // (L x N) . N => gives vector of length L
 
-    val M = weights * featuresMatrix // L x numFeatures. numFeatures x N where N is no. of test samples. NB Features must be of size (numFeatures, N)
-    val H = sigmoid((M(::, *)) + bias) // L x numFeatures
-    val T = beta.t * H // L.(L x N) of type Transpose[DenseVector]
-    new SDV((T.t).toArray) //length N
-  }
+      val M = weights * featuresMatrix // L x numFeatures. numFeatures x N where N is no. of test samples. NB Features must be of size (numFeatures, N)
+      val H = sigmoid((M(::, *)) + bias) // L x numFeatures
+      val T = beta.t * H // L.(L x N) of type Transpose[DenseVector]
+      new SDV((T.t).toArray) //length N
+    }
+
 }

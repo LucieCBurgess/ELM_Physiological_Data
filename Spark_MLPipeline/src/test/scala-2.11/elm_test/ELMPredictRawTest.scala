@@ -64,7 +64,7 @@ class ELMPredictRawTest extends FunSuite with BeforeAndAfter {
   val beta: BDV[Double] = pinv(H) * T // (L x N) . N => gives vector of length L
 
   /** Try again simple simple matrix multiplication: T = Beta x H where H is calculated from the new dataset */
-  test("[02] Can return the labels in one go using T = Beta.H(transpose)") {
+  test("[01] Can return the labels in one go using T = Beta.H(transpose)") {
 
     assert(beta.length == 10)
 
@@ -89,8 +89,35 @@ class ELMPredictRawTest extends FunSuite with BeforeAndAfter {
 
   }
 
+  /** Try again simple simple matrix multiplication: T = Beta x H where H is calculated from the new dataset */
+  test("[02] Can calculate T using pass in a features vector to predictRaw()") {
+
+    assert(beta.length == 10)
+
+    def predictRaw(features: Vector) :SDV = {
+
+      //val features: RDD[Vector] = dataWithFeatures.select("features").rdd.map(r => r.getAs[Vector](0))
+
+      val featuresArray: Array[Double] = features.toArray
+      val featuresMatrix = new BDM[Double](numFeatures, N, featuresArray)
+
+      val M = weights * featuresMatrix // L x numFeatures. numFeatures x N where N is no. of test samples. NB Features must be of size (numFeatures, N)
+      val H = sigmoid((M(::, *)) + bias) // L x numFeatures
+      val T = beta.t * H // L.(L x N) of type Transpose[DenseVector]
+      new SDV((T.t).toArray) //length N
+    }
+
+    val features = dataWithFeatures.select("features").asInstanceOf[Vector]
+    val predictions: SDV = predictRaw(features)
+    assert(predictions.isInstanceOf[SDV])
+    assert(predictions.size == N)
+    println(predictions.values.mkString(","))
+
+  }
+
+
   /** This test is failing because the operation over the RDD is not serialisable. So, back to arrays again */
-  test("[01]. Can return a label for a single sample") {
+  test("[03]. Can return a label for a single sample") {
 
     val features: RDD[Vector] = dataWithFeatures.select("features").rdd.map(r => r.getAs[Vector](0))
 

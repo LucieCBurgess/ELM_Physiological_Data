@@ -67,11 +67,11 @@ object ELMPipeline {
 //      else featureCols.addString(feature)
 //    }
 //
-
     val featureAssembler = new VectorAssembler().setInputCols(featureCols).setOutputCol("features")
-    pipelineStages += featureAssembler //KEEP THIS OUT - pipelineStages not picking up transform method correctly??
+    //pipelineStages += featureAssembler //KEEP THIS OUT - pipelineStages not picking up transform method correctly??
 
     /** Add the features column, "features", to the input data frame using VectorAssembler */
+    val dataWithFeatures = featureAssembler.transform(data)
     val Nsamples2: Int = data.count().toInt
     println(s"After prepared data: The number of samples is $Nsamples2")
 
@@ -94,7 +94,7 @@ object ELMPipeline {
     /** UseFracTest to set up the (trainData, testData) tuple and randomly split the preparedData */
     val train: Double = 1-elm.getFracTest
     val test: Double = elm.getFracTest
-    val Array(trainData, testData) = data.randomSplit(Array(train, test), seed = 12345) // was data
+    val Array(trainData, testData) = dataWithFeatures.randomSplit(Array(train, test), seed = 12345) // was data
 
     val Nsamples3: Int = trainData.count().toInt
     println(s"After splitting prepared data: The number of training samples is $Nsamples3")
