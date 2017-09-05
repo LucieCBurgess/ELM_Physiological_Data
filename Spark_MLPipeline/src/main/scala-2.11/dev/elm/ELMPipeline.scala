@@ -78,7 +78,7 @@ object ELMPipeline {
 
     /** Create the classifier, set parameters for training */
     val elm = new ELMClassifier()
-      .setFeaturesCol("features")
+      .setFeaturesCol("extracted_features") // was "features"
       .setLabelCol("binaryLabel")
       .setHiddenNodes(10)
       .setActivationFunc("sigmoid")

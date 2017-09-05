@@ -8,7 +8,7 @@ import dev.data_load.DataLoad
 import org.apache.spark.ml.linalg.{Vector, DenseVector => SDV, DenseMatrix => SDM}
 import org.apache.spark.ml.feature.{StringIndexer, VectorAssembler, VectorSlicer}
 import org.apache.spark.rdd.RDD
-import org.apache.spark.sql.functions.{col, monotonically_increasing_id, when}
+import org.apache.spark.sql.functions._
 import org.apache.spark.sql.{DataFrame, Dataset, SparkSession}
 import org.scalatest.{BeforeAndAfter, FunSuite}
 
@@ -137,5 +137,34 @@ class ELMPredictRawTest extends FunSuite with BeforeAndAfter {
     val predictions: SDV = predictRaw(features)
     assert(predictions.isInstanceOf[SDV])
     assert(predictions.size == N)
+  }
+
+  /** Another test using a udf, which passes - but I don't have access to a DataFrame */
+  test("[04] using a Spark udf") {
+
+    def extractUdf = udf((v: SDV) => v.toArray)
+    val temp: DataFrame = dataWithFeatures.withColumn("extracted_features", extractUdf($"features"))
+
+    temp.printSchema()
+
+    val featuresArray1: Array[Double] = temp.rdd.map(r => r.getAs[Double](0)).collect
+    val featuresArray2: Array[Double] = temp.rdd.map(r => r.getAs[Double](1)).collect
+    val featuresArray3: Array[Double] = temp.rdd.map(r => r.getAs[Double](2)).collect
+
+    val allfeatures: Array[Array[Double]] = Array(featuresArray1, featuresArray2, featuresArray3)
+    val flatfeatures: Array[Double] = allfeatures.flatten
+
+    temp.select("features","extracted_features").show(1)
+
+    assert(featuresArray1.length == 22)
+    assert(featuresArray2.length == 22)
+    assert(featuresArray3.length == 22)
+
+
+    val featuresMatrix = new BDM[Double](N, numFeatures, flatfeatures) //gives matrix in column major order
+    println(featuresMatrix.data.mkString(","))
+
+    assert(featuresMatrix.rows == 22)
+    assert(featuresMatrix.cols == 3)
   }
 }

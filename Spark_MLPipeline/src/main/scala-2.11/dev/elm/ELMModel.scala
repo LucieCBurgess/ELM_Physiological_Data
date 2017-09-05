@@ -8,7 +8,8 @@ import dev.data_load.SparkSessionWrapper
 import org.apache.spark.ml.param.ParamMap
 import org.apache.spark.ml.util.DefaultParamsWritable
 import org.apache.spark.rdd.RDD
-import org.apache.spark.sql.DataFrame
+import org.apache.spark.sql.{DataFrame, Dataset}
+import org.apache.spark.sql.functions.udf
 
 /**
   * Created by lucieburgess on 27/08/2017.
@@ -39,6 +40,7 @@ class ELMModel(override val uid: String, val modelWeights: BDM[Double], val mode
   /** Number of classes the label can take. 2 indicates binary classification */
   override val numClasses: Int = 2
 
+
   /**
     * @param features, the vector of features being input into the model
     * @return vector where element i is the raw prediction for label i. This raw prediction may be any real number,
@@ -51,6 +53,7 @@ class ELMModel(override val uid: String, val modelWeights: BDM[Double], val mode
     // Problem is that featuresArray is not properly stripping out the features. Need to change FeaturesType to something we
     // can actually pass in. This might involve re-writing transform instead, as it takes a dataset
     def predictRaw(features: Vector): SDV = {
+
       val numSamples = 9
       val featuresArray = features.toArray
       val featuresMatrix = new BDM[Double](modelNumFeatures, numSamples, featuresArray)

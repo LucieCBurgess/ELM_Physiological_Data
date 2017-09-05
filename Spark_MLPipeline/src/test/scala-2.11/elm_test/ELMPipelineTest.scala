@@ -2,12 +2,14 @@ package elm_test
 
 import data_load_test.SparkSessionTestWrapper
 import dev.data_load.DataLoad
-import org.apache.spark.ml.linalg.Vector
+import org.apache.spark.ml.linalg.{DenseVector, Vector}
 import org.apache.spark.ml.{Estimator, Pipeline, PipelineStage}
 import org.apache.spark.ml.feature.{StringIndexer, VectorAssembler, VectorSlicer}
+import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.functions.{col, monotonically_increasing_id, when}
 import org.apache.spark.sql.{DataFrame, Dataset, SparkSession}
 import org.scalatest.FunSuite
+
 import scala.collection.mutable
 
 /**
@@ -64,15 +66,21 @@ class ELMPipelineTest extends FunSuite {
     * the features as a vector in the first place but leave them as a matrix.
     */
   test("[03] Can package up the features into a DF column without using Vector Assembler") {
+
+      import data.sparkSession.implicits._
+      import spark.implicits._
+
       val featureCols: Array[String] = Array("acc_Chest_X", "acc_Chest_Y", "acc_Chest_Z")
-      val features: DataFrame = data.select("acc_Chest_X", "acc_Chest_Y", "acc_Chest_Z").toDF //package features into a DF
-      val featuresColumn = features.col("features") // name the column "features"
-      val dataWithFeatures = data.withColumn("features",featuresColumn)
-      dataWithFeatures.printSchema()
-      dataWithFeatures.show(10)
+
+//      val rddFeatures: RDD[Vector] = new VectorAssembler().setInputCols(featureCols).setOutputCol("features")
+//                                                                .transform(data).select($"features").as[Vector].rdd
+
+      val features: RDD[Vector] = dataWithFeatures.select("features").rdd.map(_.getAs[Vector]("features"))
+      // gets features into an RDD of DenseVectors. So then we can use this with predictRaw(features: RDD[Vector]) :Vector
+
     }
 
-    test("[03] Can recreate features using Vector slicer") {
+    test("[04] Can recreate features using Vector slicer") {
 
       val featureCols = Array("acc_Chest_X", "acc_Chest_Y", "acc_Chest_Z", "acc_Arm_X", "acc_Arm_Y", "acc_Arm_Z")
       val featureColsIndex = featureCols.map(c => s"${c}_index")
