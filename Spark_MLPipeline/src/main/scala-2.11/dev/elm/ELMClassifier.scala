@@ -13,9 +13,7 @@ import breeze.linalg.{DenseVector => BDV, DenseMatrix => BDM}
   * Created by lucieburgess on 27/08/2017.
   * This is a concrete Estimator (Classifier) of type ELMEstimator. Conforms to the following API:
   * https://spark.apache.org/docs/latest/api/scala/index.html#org.apache.spark.ml.classification.Classifier
-  * Has access to methods in ClassificationModel through extending ELMModel. Not all of these are public according to the
-  * documentation yet seem to be available e.g. getNumClasses
-  * Clean version which uses the DeveloperAPI example
+  * Has access to methods in ClassificationModel through extending ELMModel.
   */
 class ELMClassifier(val uid: String) extends Classifier[Vector, ELMClassifier, ELMModel]
   with ELMParams with DefaultParamsWritable {
@@ -47,7 +45,6 @@ class ELMClassifier(val uid: String) extends Classifier[Vector, ELMClassifier, E
 
     val numClasses = getNumClasses(ds)
     println(s"This is a binomial classifier and the number of class should be 2: it is $numClasses")
-
 
     val modelHiddenNodes: Int = getHiddenNodes
     val modelAF: String = getActivationFunc

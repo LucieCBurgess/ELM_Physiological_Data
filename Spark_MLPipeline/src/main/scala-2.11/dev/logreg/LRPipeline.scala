@@ -33,7 +33,7 @@ object LRPipeline extends SparkSessionWrapper {
     val df2 = DataLoad.createDataFrame(fileName) match {
       case Some(df) => df
         .filter($"activityLabel" > 0)
-        .withColumn("binaryLabel", when($"activityLabel".between(1, 3), 0).otherwise(1))
+        .withColumn("binaryLabel", when($"activityLabel".between(1.0, 3.0), 0.0).otherwise(1.0))
         .withColumn("uniqueID", monotonically_increasing_id())
       case None => throw new UnsupportedOperationException("Couldn't create DataFrame")
     }

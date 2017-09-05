@@ -11,7 +11,7 @@ case class MHealthUser(acc_Chest_X: Double, acc_Chest_Y: Double, acc_Chest_Z: Do
                        acc_Arm_X: Double, acc_Arm_Y: Double, acc_Arm_Z: Double,
                        gyro_Arm_X: Double, gyro_Arm_Y: Double, gyro_Arm_Z: Double,
                        magno_Arm_X: Double, magno_Arm_Y: Double, magno_Arm_Z: Double,
-                       activityLabel: Int)
+                       activityLabel: Double)
 
 case object MHealthUser {
   final val allowedInputCols: Array[String] = Array("acc_Chest_X", "acc_Chest_Y", "acc_Chest_Z", "ecg_1", "ecg_2",

@@ -45,7 +45,7 @@ object MultipleDataLoad extends SparkSessionWrapper {
           attributes(14).toDouble, attributes(15).toDouble, attributes(16).toDouble,
           attributes(17).toDouble, attributes(18).toDouble, attributes(19).toDouble,
           attributes(20).toDouble, attributes(21).toDouble, attributes(22).toDouble,
-          attributes(23).toInt))
+          attributes(23).toDouble))
         .toDF()
       df
     }
@@ -53,7 +53,7 @@ object MultipleDataLoad extends SparkSessionWrapper {
     /** Helper function to omit unlabelled data */
     def omitUnLabelledData(df: DataFrame) :DataFrame = {
 
-      val labelledDF = df.filter($"activityLabel" =!= 0)
+      val labelledDF = df.filter($"activityLabel" =!= 0.0)
       labelledDF
     }
 

@@ -143,6 +143,9 @@ class ELMPredictRawTest extends FunSuite with BeforeAndAfter {
   test("[04] using a Spark udf") {
 
     def extractUdf = udf((v: SDV) => v.toArray)
+
+    val emptyDF = spark.emptyDataFrame
+
     val temp: DataFrame = dataWithFeatures.withColumn("extracted_features", extractUdf($"features"))
 
     temp.printSchema()
@@ -154,7 +157,7 @@ class ELMPredictRawTest extends FunSuite with BeforeAndAfter {
     val allfeatures: Array[Array[Double]] = Array(featuresArray1, featuresArray2, featuresArray3)
     val flatfeatures: Array[Double] = allfeatures.flatten
 
-    temp.select("features","extracted_features").show(1)
+    temp.show()
 
     assert(featuresArray1.length == 22)
     assert(featuresArray2.length == 22)
@@ -167,4 +170,5 @@ class ELMPredictRawTest extends FunSuite with BeforeAndAfter {
     assert(featuresMatrix.rows == 22)
     assert(featuresMatrix.cols == 3)
   }
+
 }
