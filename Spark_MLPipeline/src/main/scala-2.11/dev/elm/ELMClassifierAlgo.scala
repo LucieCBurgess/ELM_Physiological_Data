@@ -25,8 +25,11 @@ sealed class ELMClassifierAlgo (val ds: Dataset[_], hiddenNodes: Int, af: String
   import ds.sparkSession.implicits._
 
   /** Step 3: calculate main variables used in the model */
-  private val numFeatures: Int = ds.select("features").head.get(0).asInstanceOf[Vector].size
+  val numFeatures: Int = ds.select("features").head.get(0).asInstanceOf[Vector].size
   println(s"The number of features is $numFeatures")
+
+  //FIXME - not currently used, as using the sigmoid and tanh built in Breeze functions.
+  val chosenAF = new ActivationFunction(af) //activation function, set in ELMClassifier
 
   private val N: Int = ds.count().toInt
   println(s"The number of training samples is $N")
@@ -42,8 +45,6 @@ sealed class ELMClassifierAlgo (val ds: Dataset[_], hiddenNodes: Int, af: String
 
   private val H: BDM[Double] = BDM.zeros[Double](N, L) //Hidden layer output matrix, initially empty
 
-  //FIXME - not currently used, as using the sigmoid and tanh built in Breeze functions.
-  val chosenAF = new ActivationFunction(af) //activation function, set in ELMClassifier
 
   /** Step 4: randomly assign input weight matrix of size (L, numFeatures) */
   val weights: BDM[Double] = BDM.rand[Double](L, numFeatures) // L x numFeatures
@@ -57,10 +58,10 @@ sealed class ELMClassifierAlgo (val ds: Dataset[_], hiddenNodes: Int, af: String
     * I've tried this as a colum slice in Breeze but it's not working so this is a work-around
     */
   val biasVector: BDM[Double] = BDM.rand[Double](L, 1)
-  val biasArray: Array[Double] = biasVector.toArray // bias of Length L
-  val buf = scala.collection.mutable.ArrayBuffer.empty[Array[Double]]
-  for (i <- 0 until N) yield buf += biasArray
-  val replicatedBiasArray: Array[Double] = buf.flatten.toArray
+//  val biasArray: Array[Double] = biasVector.toArray // bias of Length L
+//  val buf = scala.collection.mutable.ArrayBuffer.empty[Array[Double]]
+//  for (i <- 0 until N) yield buf += biasArray
+//  val replicatedBiasArray: Array[Double] = buf.flatten.toArray
 
   val bias :BDV[Double] = BDV.rand[Double](L) // bias is column vector of length L
   println(s"*************** The number of rows of the bias matrix is ${bias.length} *****************")
@@ -101,7 +102,7 @@ sealed class ELMClassifierAlgo (val ds: Dataset[_], hiddenNodes: Int, af: String
   private def extractFeaturesMatrix(ds: Dataset[_]): BDM[Double] = {
 
     val array = ds.select("features").rdd.flatMap(r => r.getAs[Vector](0).toArray).collect
-    val numFeatures: Int = ds.select("features").head.get(0).asInstanceOf[Vector].size
+    //val numFeatures: Int = ds.select("features").head.get(0).asInstanceOf[Vector].size
     println(s"The size of the features matrix is $numFeatures rows, $N cols ***********")
     new BDM[Double](numFeatures,N,array)
   }

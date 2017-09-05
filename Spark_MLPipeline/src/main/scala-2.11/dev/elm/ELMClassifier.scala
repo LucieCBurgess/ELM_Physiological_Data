@@ -50,16 +50,16 @@ class ELMClassifier(val uid: String) extends Classifier[Vector, ELMClassifier, E
 
 
     val modelHiddenNodes: Int = getHiddenNodes
-    val af: String = getActivationFunc
+    val modelAF: String = getActivationFunc
 
-    val eLMClassifierAlgo = new ELMClassifierAlgo(ds, modelHiddenNodes, af)
+    val eLMClassifierAlgo = new ELMClassifierAlgo(ds, modelHiddenNodes, modelAF)
     val modelWeights: BDM[Double] = eLMClassifierAlgo.weights
     val modelBias: BDV[Double] = eLMClassifierAlgo.bias
     val modelBeta: BDV[Double] = eLMClassifierAlgo.calculateBeta()
-    val modelAF: ActivationFunction = eLMClassifierAlgo.chosenAF // has to be of type ActivationFunc not String
+    val modelNumFeatures: Int = eLMClassifierAlgo.numFeatures
 
     /** Return the training model */
-    val model = new ELMModel(uid, modelWeights, modelBias, modelBeta, modelHiddenNodes, modelAF).setParent(this)
+    val model = new ELMModel(uid, modelWeights, modelBias, modelBeta, modelHiddenNodes, modelAF, modelNumFeatures).setParent(this)
     model
   }
 }

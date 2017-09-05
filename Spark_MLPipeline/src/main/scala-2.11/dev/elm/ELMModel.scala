@@ -24,14 +24,15 @@ import org.apache.spark.sql.DataFrame
   * the maximum value returned by [[predictRaw()]], as stated in the Classifier Model API
   *
   */
-class ELMModel(override val uid: String, val modelWeights: BDM[Double], val modelBias: BDV[Double], val modelBeta: BDV[Double], val modelHiddenNodes: Int, val modelAF: ActivationFunction)
+class ELMModel(override val uid: String, val modelWeights: BDM[Double], val modelBias: BDV[Double], val modelBeta: BDV[Double],
+               val modelHiddenNodes: Int, val modelAF: String, val modelNumFeatures: Int)
   extends ClassificationModel[Vector, ELMModel] with SparkSessionWrapper
     with ELMParams with DefaultParamsWritable {
 
   import spark.implicits._
 
   override def copy(extra: ParamMap): ELMModel = {
-    val copied = new ELMModel(uid, modelWeights, modelBias, modelBeta, modelHiddenNodes, modelAF)
+    val copied = new ELMModel(uid, modelWeights, modelBias, modelBeta, modelHiddenNodes, modelAF, modelNumFeatures)
     copyValues(copied, extra).setParent(parent)
   }
 
@@ -49,9 +50,8 @@ class ELMModel(override val uid: String, val modelWeights: BDM[Double], val mode
     //FIXME - re-write this function to take a Vector parameter
     def predictRaw(features: Vector): SDV = {
 
-    //val featuresArray: Array[Double] = features.rdd.flatMap(r => r.getAs[Vector](0).toArray).collect
       val featuresArray: Array[Double] = features.toArray
-      val featuresMatrix = new BDM[Double](numFeatures, features.size, featuresArray)
+      val featuresMatrix = new BDM[Double](modelNumFeatures, N, featuresArray)
 
       val bias: BDV[Double] = modelBias // L x 1
       val weights: BDM[Double] = modelWeights //  L x numFeatures
