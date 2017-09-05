@@ -48,10 +48,12 @@ class ELMModel(override val uid: String, val modelWeights: BDM[Double], val mode
     *         NB. data.select("features") gives an instance of a dataframe, so this is the type of the features column
     */
     //FIXME - re-write this function to take a Vector parameter
+    // Problem is that featuresArray is not properly stripping out the features. Need to change FeaturesType to something we
+    // can actually pass in. This might involve re-writing transform instead, as it takes a dataset
     def predictRaw(features: Vector): SDV = {
-
-      val featuresArray: Array[Double] = features.toArray
-      val featuresMatrix = new BDM[Double](modelNumFeatures, N, featuresArray)
+      val numSamples = 9
+      val featuresArray = features.toArray
+      val featuresMatrix = new BDM[Double](modelNumFeatures, numSamples, featuresArray)
 
       val bias: BDV[Double] = modelBias // L x 1
       val weights: BDM[Double] = modelWeights //  L x numFeatures

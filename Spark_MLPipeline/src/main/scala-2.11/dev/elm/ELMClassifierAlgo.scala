@@ -74,7 +74,7 @@ sealed class ELMClassifierAlgo (val ds: Dataset[_], hiddenNodes: Int, af: String
     */
   def calculateBeta(): BDV[Double] = {
 
-    val M: BDM[Double] = weights * X //L x N
+    val M: BDM[Double] = weights * X //L x numFeatures. numFeatures x N = L x N
 
     val H: BDM[Double] = sigmoid((M(::,*) + bias).t) //N x L
 

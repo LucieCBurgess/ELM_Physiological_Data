@@ -58,6 +58,20 @@ class ELMPipelineTest extends FunSuite {
       ??? //Not yet implemented
     }
 
+  /** Problem we have here is that FeaturesType is currently a vector. If we can make it a DataFrame or column
+    * that will make it easier to work with.
+    * The matrix transformations all take X from a DataFrame so perhaps the easiest thing to do is not package
+    * the features as a vector in the first place but leave them as a matrix.
+    */
+  test("[03] Can package up the features into a DF column without using Vector Assembler") {
+      val featureCols: Array[String] = Array("acc_Chest_X", "acc_Chest_Y", "acc_Chest_Z")
+      val features: DataFrame = data.select("acc_Chest_X", "acc_Chest_Y", "acc_Chest_Z").toDF //package features into a DF
+      val featuresColumn = features.col("features") // name the column "features"
+      val dataWithFeatures = data.withColumn("features",featuresColumn)
+      dataWithFeatures.printSchema()
+      dataWithFeatures.show(10)
+    }
+
     test("[03] Can recreate features using Vector slicer") {
 
       val featureCols = Array("acc_Chest_X", "acc_Chest_Y", "acc_Chest_Z", "acc_Arm_X", "acc_Arm_Y", "acc_Arm_Z")

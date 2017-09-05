@@ -94,11 +94,13 @@ class ELMPredictRawTest extends FunSuite with BeforeAndAfter {
 
     assert(beta.length == 10)
 
+    //val features: RDD[Vector] = dataWithFeatures.select("features").rdd.map(r => r.getAs[Vector](0))
+
     def predictRaw(features: Vector) :SDV = {
 
-      //val features: RDD[Vector] = dataWithFeatures.select("features").rdd.map(r => r.getAs[Vector](0))
+      val featuresDV = features.toDense
 
-      val featuresArray: Array[Double] = features.toArray
+      val featuresArray: Array[Double] = featuresDV.toArray
       val featuresMatrix = new BDM[Double](numFeatures, N, featuresArray)
 
       val M = weights * featuresMatrix // L x numFeatures. numFeatures x N where N is no. of test samples. NB Features must be of size (numFeatures, N)
