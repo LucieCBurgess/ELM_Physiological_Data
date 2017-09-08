@@ -13,12 +13,10 @@ import org.apache.spark.sql.Dataset
   * Various parameters are passed into ELM Model so that labels can be predicted from the parameters.
   * Class defined as sealed to prevent other classes and objects extending ELMClassifierAlgo
   * This function calculates the output weight matrix beta and passes it to transform() in ClassifierModel.
-  * Extends ELMClassifier so we have access to the parameters featuresCol, labelCol
   * This takes a parameter, ds, which is the input training set to the model.
   */
 
-sealed class ELMClassifierAlgo (val ds: Dataset[_], hiddenNodes: Int, af: String)
-  extends ELMClassifier {
+sealed class ELMAlgo(val ds: Dataset[_], hiddenNodes: Int, af: String) { // previously ExtendsELMClassifier
 
   import ds.sparkSession.implicits._
 
@@ -55,8 +53,7 @@ sealed class ELMClassifierAlgo (val ds: Dataset[_], hiddenNodes: Int, af: String
 
   /**
     * Step 6: Calculate the output weight vector beta of length L where L is the number of hidden nodes
-    * pinv fails for large matrices - Java OOM error
-    * Only possibility it to re-calculate pinv using Spark matrices, or use cloud resources for the computation.
+    * pinv is the Moore-Penrose Pseudo-Inverse of matrix H
     */
   def calculateBeta(): BDV[Double] = {
 

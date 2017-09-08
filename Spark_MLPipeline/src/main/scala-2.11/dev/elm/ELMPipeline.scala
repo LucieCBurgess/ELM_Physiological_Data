@@ -30,7 +30,7 @@ object ELMPipeline {
 
     import spark.implicits._
 
-    val fileName: String = "smalltest.txt"
+    val fileName: String = "mHealth_subject1.txt"
 
     /** Load training and test data and cache it */
     val data = DataLoad.createDataFrame(fileName) match {
@@ -101,13 +101,20 @@ object ELMPipeline {
     println(s"Training time: $trainingTime seconds")
 
     /** Evaluate the model on the training and test data */
+    val startTime2 = System.nanoTime()
     val predictionsTrain = elmModel.transform(trainData).cache()
+    val predictTimeTrain = (System.nanoTime() - startTime2) / 1e9
+    println(s"Prediction time for the training data: $predictTimeTrain seconds")
+
     //println(s"The schema for the predicted dataset based on the training data is ${predictionsTrain.printSchema}")
     //predictionsTrain.printSchema
     println(s"Printing predictions for the training data")
     predictionsTrain.show(10)
 
+    val startTime3 = System.nanoTime()
     val predictionsTest: DataFrame = elmModel.transform(testData).cache()
+    val predictTimeTest = (System.nanoTime() - startTime3) / 1e9
+    println(s"Prediction time for the test data: $predictTimeTest seconds")
     //println(s"The schema for the predicted dataset based on the test data is ${predictionsTest.printSchema}")
     //predictionsTest.printSchema
     println(s"Printing predictions for the test data")

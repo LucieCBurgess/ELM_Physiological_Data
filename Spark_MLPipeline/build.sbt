@@ -23,11 +23,12 @@ libraryDependencies += "com.github.scopt" %% "scopt" % "3.6.0"
 
 // Breeze dependencies https://github.com/scalanlp/breeze/wiki/Installation
 libraryDependencies  ++= Seq(
-  "org.scalanlp" %% "breeze" % "0.12",
-  "org.scalanlp" %% "breeze-natives" % "0.12",
+  "org.scalanlp" %% "breeze" % "0.13.2",
+  "org.scalanlp" %% "breeze-natives" % "0.13.2",
   // the visualization library is distributed separately as well. It depends on LGPL code
-  "org.scalanlp" %% "breeze-viz" % "0.12"
-)
+  "org.scalanlp" %% "breeze-viz" % "0.13.2",
+  "com.github.fommil.netlib" % "all" % "1.1.2" pomOnly()
+) // was 0.12
 
 resolvers += "Sonatype Releases" at "https://oss.sonatype.org/content/repositories/releases/"
 

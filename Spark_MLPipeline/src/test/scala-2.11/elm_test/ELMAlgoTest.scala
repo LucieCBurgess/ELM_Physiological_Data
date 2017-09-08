@@ -197,6 +197,7 @@ class ELMAlgoTest extends FunSuite {
     assert(M.rows == 22) // N x L
     assert(M.cols == 10)
 
+    //No longer needed when using Breeze matrices, can use the broadcast function
     val biasArray = bias.toArray // bias of Length L
     val buf = scala.collection.mutable.ArrayBuffer.empty[Array[Double]]
       for (i <- 0 until N) yield buf += biasArray

@@ -22,7 +22,7 @@ class ELMClassifier(val uid: String) extends Classifier[Vector, ELMClassifier, E
 
   override def copy(extra: ParamMap): ELMClassifier = defaultCopy(extra)
 
-  /** Set parameters */
+  /** Set additional parameters */
   def setActivationFunc(value: String): this.type = set(activationFunc, value)
 
   def setHiddenNodes(value: Int): this.type = set(hiddenNodes, value)
@@ -49,13 +49,13 @@ class ELMClassifier(val uid: String) extends Classifier[Vector, ELMClassifier, E
     val modelHiddenNodes: Int = getHiddenNodes
     val modelAF: String = getActivationFunc
 
-    val eLMClassifierAlgo = new ELMClassifierAlgo(ds, modelHiddenNodes, modelAF)
+    val eLMClassifierAlgo = new ELMAlgo(ds, modelHiddenNodes, modelAF)
     val modelWeights: BDM[Double] = eLMClassifierAlgo.weights
     val modelBias: BDV[Double] = eLMClassifierAlgo.bias
     val modelBeta: BDV[Double] = eLMClassifierAlgo.calculateBeta()
     val modelNumFeatures: Int = eLMClassifierAlgo.numFeatures
 
-    /** Return the training model */
+    /** Return the trained model */
     val model = new ELMModel(uid, modelWeights, modelBias, modelBeta, modelHiddenNodes, modelAF, modelNumFeatures).setParent(this)
     model
   }
