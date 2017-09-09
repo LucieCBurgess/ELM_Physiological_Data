@@ -1,7 +1,7 @@
 package tutorials
 
 /**
-  * Created by lucieburgess on 03/08/2017.
+  * Created by lucieburgess on 15/07/2017.
   */
 
 import org.apache.spark.{SparkConf, SparkContext}

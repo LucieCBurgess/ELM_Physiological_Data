@@ -57,18 +57,18 @@ class ELMModel(override val uid: String, val modelWeights: BDM[Double], val mode
     // can actually pass in. This might involve re-writing transform instead, as it takes a dataset
   override def predictRaw(features: Vector) :Vector = {
 
-      val numSamples = 9
+      //val numSamples = 9
       val featuresArray = features.toArray
-      val featuresMatrix = new BDM[Double](modelNumFeatures, 1, featuresArray)
+      val featuresMatrix = new BDM[Double](modelNumFeatures, 1, featuresArray) //numFeatures x 1
 
       val bias: BDV[Double] = modelBias //L x 1
-      val weights: BDM[Double] = modelWeights // LxN.N
+      val weights: BDM[Double] = modelWeights // Lx numFeatures
       val beta: BDV[Double] = modelBeta // (LxN).N => gives vector of length L
 
-      val M = weights * featuresMatrix // L x numFeatures. numFeatures x N where N is no. of test samples. NB Features must be of size (numFeatures, N)
-      val H = sigmoid((M(::, *)) + bias) // L x numFeatures
-      val T = beta.t * H // L.(L x N) of type Transpose[DenseVector]
-      new SDV((T.t).toArray) //length Nval M = weights * featuresMatrix // L x numFeatures. numFeatures x N where N is no. of test samples. NB Features must be of size (numFeatures, N)
+      val M = weights * featuresMatrix // L x numFeatures. numFeatures x 1 = L x 1
+      val H = sigmoid((M(::, *)) + bias) // L x 1
+      val T = beta.t * H // L.(L x 1) of type Transpose[DenseVector]
+      new SDV((T.t).toArray) // length 1
   }
 
 

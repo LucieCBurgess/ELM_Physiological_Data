@@ -14,18 +14,26 @@ import org.apache.spark.ml.evaluation.{BinaryClassificationEvaluator, Evaluator}
 import org.apache.spark.ml.feature.VectorAssembler
 import org.apache.spark.ml.tuning.{CrossValidator, ParamGridBuilder}
 import org.apache.spark.ml.{Pipeline, PipelineModel, PipelineStage, Transformer}
-import org.apache.spark.sql.DataFrame
+import org.apache.spark.sql.{DataFrame, SparkSession}
 import org.apache.spark.sql.functions._
+import org.apache.log4j.{Logger,Level}
+
 import scala.collection.mutable
 
 
-object LRPipeline extends SparkSessionWrapper {
+object LRPipeline {
+
+  Logger.getLogger("org").setLevel(Level.ERROR)
+  Logger.getLogger("akka").setLevel(Level.ERROR)
+
+  lazy val spark: SparkSession =
+    SparkSession.builder().master("local[*]").appName("ELMPipeline").getOrCreate()
 
   import spark.implicits._
 
   val fileName: String = "mHealth_subject1.txt"
 
-  def run(params: LRTestParams) :Unit = {
+  def run(params: LRParams) :Unit = {
 
     println(s"Logistic Regression Example from the Spark examples with some dummy data and parameters: \n$params")
 
@@ -99,6 +107,7 @@ object LRPipeline extends SparkSessionWrapper {
     println("************* Performing cross validation and computing best parameters ************")
     performCrossValidation(trainData, testData, params, pipeline, lr)
 
+    spark.stop()
   }
 
   /**
@@ -147,7 +156,7 @@ object LRPipeline extends SparkSessionWrapper {
     * @param pipeline the pipeline to which cross validation is being applied
     * @param lr the LogisticRegression model being cross-validated
     */
-  private def performCrossValidation(trainData: DataFrame, testData: DataFrame, params: LRTestParams, pipeline: Pipeline, lr: LogisticRegression) :Unit = {
+  private def performCrossValidation(trainData: DataFrame, testData: DataFrame, params: LRParams, pipeline: Pipeline, lr: LogisticRegression) :Unit = {
 
     val paramGrid = new ParamGridBuilder()
       .addGrid(lr.regParam, Array(params.regParam, 0.01, 0.1))
@@ -182,7 +191,6 @@ object LRPipeline extends SparkSessionWrapper {
     println(s"The best model is ${bestModel.toString()} and the params are $bestLRParams")
 
   }
-
 }
 
 

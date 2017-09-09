@@ -1,6 +1,6 @@
 package dev.pca
 
-import dev.logreg.{LRTestParams, SparkSessionWrapper}
+import dev.logreg.{LRParams, SparkSessionWrapper}
 import dev.data_load.{DataLoad, MHealthUser}
 import org.apache.spark.ml.classification.{LogisticRegression, LogisticRegressionModel}
 import org.apache.spark.ml.evaluation.{BinaryClassificationEvaluator, Evaluator}
@@ -24,7 +24,7 @@ object PCAPipeline extends SparkSessionWrapper {
 
     val fileName: String = "mHealth_subject1.txt"
 
-    val defaultParams = LRTestParams()
+    val defaultParams = LRParams()
 
     def main(args: Array[String]) {
 
@@ -151,7 +151,7 @@ object PCAPipeline extends SparkSessionWrapper {
       * @param pipeline the pipeline to which cross validation is being applied
       * @param lr the LogisticRegression model being cross-validated
       */
-    private def performCrossValidation(trainData: DataFrame, testData: DataFrame, params: LRTestParams, pipeline: Pipeline, lr: LogisticRegression) :Unit = {
+    private def performCrossValidation(trainData: DataFrame, testData: DataFrame, params: LRParams, pipeline: Pipeline, lr: LogisticRegression) :Unit = {
 
       val paramGrid = new ParamGridBuilder()
         .addGrid(lr.regParam, Array(params.regParam, 0.01, 0.1))

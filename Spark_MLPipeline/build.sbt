@@ -28,7 +28,7 @@ libraryDependencies  ++= Seq(
   // the visualization library is distributed separately as well. It depends on LGPL code
   "org.scalanlp" %% "breeze-viz" % "0.13.2",
   "com.github.fommil.netlib" % "all" % "1.1.2" pomOnly()
-) // was 0.12
+)
 
 resolvers += "Sonatype Releases" at "https://oss.sonatype.org/content/repositories/releases/"
 

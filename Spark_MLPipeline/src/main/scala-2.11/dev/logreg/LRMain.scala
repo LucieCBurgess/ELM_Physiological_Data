@@ -1,20 +1,21 @@
 package dev.logreg
 
+import org.apache.spark.sql.SparkSession
+
 /**
   * Created by lucieburgess on 25/08/2017.
   * Main method for LogisticRegression code, setting up parameters and calling run()
   */
-object LRTestMain extends SparkSessionWrapper {
-
+object LRMain {
 
   def main(args: Array[String]): Unit = {
 
     /** Define a number of parameters for this logistic regression model using org.apache.spark.ml.classification.LogisticRegression
       * Set the layout for using the parsing the parameters using Scopt, https://github.com/scopt/scopt, simple command line options parsing
       */
-    val defaultParams = LRTestParams()
+    val defaultParams = LRParams()
 
-    val parser = new scopt.OptionParser[LRTestParams]("Logistic Regression test using src/main/scala/org/apache/spark/examples/ml/LogisticRegressionExample.scala") {
+    val parser = new scopt.OptionParser[LRParams]("Logistic Regression test using src/main/scala/org/apache/spark/examples/ml/LogisticRegressionExample.scala") {
 
       head("Logistic Regression parameters")
 
@@ -54,5 +55,5 @@ object LRTestMain extends SparkSessionWrapper {
       case _ => sys.exit(1)
     }
   }
-  spark.stop()
+  //spark.stop()
 }
