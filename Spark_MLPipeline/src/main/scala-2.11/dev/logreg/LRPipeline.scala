@@ -8,7 +8,7 @@ package dev.logreg
 
 //FIXME - could do with more unit testing
 
-import dev.data_load.DataLoadOption
+import dev.data_load.{DataLoadOption, DataLoadWTF}
 import org.apache.spark.ml.classification.{LogisticRegression, LogisticRegressionModel}
 import org.apache.spark.ml.evaluation.{BinaryClassificationEvaluator, Evaluator}
 import org.apache.spark.ml.feature.VectorAssembler
@@ -16,26 +16,25 @@ import org.apache.spark.ml.tuning.{CrossValidator, ParamGridBuilder}
 import org.apache.spark.ml.{Pipeline, PipelineModel, PipelineStage, Transformer}
 import org.apache.spark.sql.{DataFrame, SparkSession}
 import org.apache.spark.sql.functions._
-import org.apache.log4j.{Logger,Level}
+import org.apache.log4j.{Level, Logger}
 
 import scala.collection.mutable
 
 
 object LRPipeline {
 
-  Logger.getLogger("org").setLevel(Level.ERROR)
-  Logger.getLogger("akka").setLevel(Level.ERROR)
-
-  lazy val spark: SparkSession =
-    SparkSession.builder().master("local[*]").appName("ELMPipeline").getOrCreate()
-
-  import spark.implicits._
-
   val fileName: String = "mHealth_subject1.txt"
 
   def run(params: LRParams) :Unit = {
 
-    println(s"Logistic Regression Example from the Spark examples with some dummy data and parameters: \n$params")
+    val spark: SparkSession = SparkSession
+      .builder()
+      .master("local[*]")
+      .appName(s"Logistic Regression example with $params").getOrCreate()
+
+    import spark.implicits._
+
+    println(s"Logistic Regression applied to the mHealth data with parameters: \n$params")
 
     /** Load training and test data and cache it */
     val df2 = DataLoadOption.createDataFrame(fileName) match {
@@ -46,20 +45,14 @@ object LRPipeline {
       case None => throw new UnsupportedOperationException("Couldn't create DataFrame")
     }
 
+//    val df = DataLoadWTF.createDataFrame("Multiple3")
+//      .filter($"activityLabel" > 0)
+//      .withColumn("binaryLabel", when($"activityLabel".between(1.0, 3.0), 0.0).otherwise(1.0))
+
     /** Set up the pipeline stages */
     val pipelineStages = new mutable.ArrayBuffer[PipelineStage]()
 
-    /** Randomly split data into test, train with 50% split */
-    // FIXME - add this to params. See DecisionTreeExample. Basically need to amend DataLoad method to include params
-    val Array(trainData, testData) = df2.randomSplit(Array(0.5,0.5),seed = 12345)
-
-    /** Incorporate myBinarizer instead of .withColumn("binaryLabel")*/
-//    val myBinarizer = new MyBinarizer()
-//    pipelineStages += myBinarizer
-
     df2.show()
-
-    //FIXME - in the real pipeline we would include a Feature Transformer step here to calculate velocity from accelerometer data
 
     /**
       * Combine columns which we think will predict Activity into a single feature vector
@@ -68,20 +61,29 @@ object LRPipeline {
       * Add the featureAssembler to the pipeline
       */
     val featureCols = Array("acc_Chest_X", "acc_Chest_Y", "acc_Chest_Z", "acc_Arm_X", "acc_Arm_Y", "acc_Arm_Z")
-    val featureAssembler = new VectorAssembler().setInputCols(featureCols).setOutputCol("modelFeatures")
+    val featureAssembler = new VectorAssembler().setInputCols(featureCols).setOutputCol("features")
     pipelineStages += featureAssembler
 
     /** Create the classifier, set parameters for training */
     val lr = new LogisticRegression()
-        .setFeaturesCol("modelFeatures")
+        .setFeaturesCol("features")
         .setLabelCol("binaryLabel")
         .setRegParam(params.regParam)
         .setElasticNetParam(params.elasticNetParam)
         .setMaxIter(params.maxIter)
         .setTol(params.tol)
         .setFitIntercept(params.fitIntercept)
+
     pipelineStages += lr
     println("LogisticRegression parameters:\n" + lr.explainParams() + "\n")
+
+    /** Randomly split data into test, train with 50% split */
+    // FIXME - add this to params. See DecisionTreeExample. Basically need to amend DataLoad method to include params
+    //val Array(trainData, testData) = df.randomSplit(Array(0.5,0.5),seed = 12345)
+
+    val train: Double = 1-params.fracTest
+    val test: Double = params.fracTest
+    val Array(trainData, testData) = df2.randomSplit(Array(train, test), seed = 12345) // was data
 
     /** Set the pipeline from the pipeline stages */
     val pipeline: Pipeline = new Pipeline().setStages(pipelineStages.toArray)
@@ -136,7 +138,7 @@ object LRPipeline {
     println(s"Running time: $predictionTime seconds")
     predictions.printSchema()
 
-    val selected = predictions.select("activityLabel", "binaryLabel", "modelFeatures", "rawPrediction", "probability", "prediction")
+    val selected = predictions.select("activityLabel", "binaryLabel", "features", "rawPrediction", "probability", "prediction")
     selected.show()
 
     val evaluator = SingletonEvaluator.getEvaluator
@@ -177,7 +179,7 @@ object LRPipeline {
     val cvStartTime = System.nanoTime()
     val cvModel = cv.fit(trainData)
     val cvPredictions = cvModel.transform(testData)
-    cvPredictions.select("activityLabel", "binaryLabel", "modelFeatures", "rawPrediction", "probability", "prediction").show
+    cvPredictions.select("activityLabel", "binaryLabel", "features", "rawPrediction", "probability", "prediction").show
 
     evaluator.evaluate(cvPredictions)
     val crossValidationTime = (System.nanoTime() - cvStartTime) / 1e9

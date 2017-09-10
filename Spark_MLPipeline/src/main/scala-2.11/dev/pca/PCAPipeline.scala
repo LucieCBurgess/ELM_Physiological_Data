@@ -1,13 +1,13 @@
 package dev.pca
 
-import dev.logreg.{LRParams, SparkSessionWrapper}
 import dev.data_load.{DataLoadOption, MHealthUser}
+import dev.logreg.LRParams
 import org.apache.spark.ml.classification.{LogisticRegression, LogisticRegressionModel}
 import org.apache.spark.ml.evaluation.{BinaryClassificationEvaluator, Evaluator}
-import org.apache.spark.ml.feature.{VectorAssembler, PCA}
+import org.apache.spark.ml.feature.{PCA, VectorAssembler}
 import org.apache.spark.ml.tuning.{CrossValidator, ParamGridBuilder}
 import org.apache.spark.ml.{Pipeline, PipelineModel, PipelineStage, Transformer}
-import org.apache.spark.sql.DataFrame
+import org.apache.spark.sql.{DataFrame, SparkSession}
 import org.apache.spark.sql.catalyst.ScalaReflection
 import org.apache.spark.sql.functions._
 import org.apache.spark.sql.types.StructType
@@ -18,7 +18,10 @@ import scala.collection.mutable
   * Created by lucieburgess on 01/09/2017.
   * Added some additional code to the LRPipeline to play with PCA (Principal Components Analysis)
   */
-object PCAPipeline extends SparkSessionWrapper {
+object PCAPipeline {
+
+  lazy val spark: SparkSession =
+    SparkSession.builder().master("local[*]").appName("PCA_Pipeline").getOrCreate()
 
     import spark.implicits._
 
@@ -103,6 +106,7 @@ object PCAPipeline extends SparkSessionWrapper {
       println("************* Performing cross validation and computing best parameters ************")
       performCrossValidation(trainData, testData, defaultParams, pipeline, lr)
 
+      spark.stop()
     }
 
     /**

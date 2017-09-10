@@ -1,6 +1,7 @@
 package dev.elm
 
-import dev.logreg.{LRPipeline, LRParams, SparkSessionWrapper}
+import dev.logreg.{LRParams, LRPipeline}
+import org.apache.spark.sql.SparkSession
 
 /**
   * Created by lucieburgess on 27/08/2017.
@@ -8,7 +9,7 @@ import dev.logreg.{LRPipeline, LRParams, SparkSessionWrapper}
   * Set the layout for using the parsing the parameters using Scopt, https://github.com/scopt/scopt
   */
 
-object ELMMain extends SparkSessionWrapper {
+object ELMMain {
 
 
   def main(args: Array[String]): Unit = {

@@ -1,6 +1,6 @@
 package dev.elm
 
-import dev.logreg.{LRParams, SparkSessionWrapper}
+import dev.logreg.LRParams
 import dev.data_load.{DataLoadOption, MHealthUser}
 import org.apache.spark.ml.classification.{LogisticRegression, LogisticRegressionModel}
 import org.apache.spark.ml.evaluation.{BinaryClassificationEvaluator, Evaluator}
