@@ -4,7 +4,6 @@ import org.apache.spark.ml.classification.ClassificationModel
 import org.apache.spark.ml.linalg.{Vector, DenseMatrix => SDM, DenseVector => SDV}
 import breeze.linalg.{*, pinv, DenseMatrix => BDM, DenseVector => BDV, Matrix => BM, Vector => BV}
 import breeze.numerics._
-import dev.data_load.SparkSessionWrapper
 import org.apache.spark.ml.param.ParamMap
 import org.apache.spark.ml.util.DefaultParamsWritable
 import org.apache.spark.rdd.RDD

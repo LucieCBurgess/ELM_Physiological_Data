@@ -1,14 +1,13 @@
 package dev.data_load
 
 import org.apache.spark.rdd.RDD
-import org.apache.spark.sql.functions.{monotonically_increasing_id, when}
 import org.apache.spark.sql.{DataFrame, SparkSession}
-
 import scala.util.Try
 
 /**
   * Created by lucieburgess on 10/09/2017. Try using WholeTextFile method instead of TextFile method.
-  * Has an additional operation to flatmap the rows. 3 partitions used in the method but could vary this to test the impact on performance.
+  * Has an additional operation to flatmap the rows.
+  * 3 partitions used in the method but could vary this to test the impact on performance.
   */
 object DataLoadWTF {
 

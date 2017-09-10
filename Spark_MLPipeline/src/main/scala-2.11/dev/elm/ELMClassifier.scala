@@ -1,6 +1,5 @@
 package dev.elm
 
-import dev.data_load.SparkSessionWrapper
 import org.apache.spark.ml.classification.Classifier
 import org.apache.spark.ml.linalg.{Vector, DenseVector => SDV, DenseMatrix => SDM}
 import org.apache.spark.ml.param.ParamMap

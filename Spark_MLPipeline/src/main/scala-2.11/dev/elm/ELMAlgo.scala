@@ -3,7 +3,6 @@ package dev.elm
 import breeze.linalg.{*, pinv, DenseMatrix => BDM, DenseVector => BDV}
 import org.apache.spark.ml.linalg.{Vector, DenseVector => SDV}
 import breeze.numerics.sigmoid
-import dev.data_load.SparkSessionWrapper
 import org.apache.spark.sql.functions.col
 import org.apache.spark.sql.Dataset
 

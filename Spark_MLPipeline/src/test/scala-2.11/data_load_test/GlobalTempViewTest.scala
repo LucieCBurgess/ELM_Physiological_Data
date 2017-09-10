@@ -5,10 +5,10 @@ package data_load_test
   * Updated tests in include wrapped version of file using Option and took out multiple file load,
   * so class is testing the temp view only
   * Also added a monotonically increasing id()
+  * ALL TESTS PASS
   */
 
 import dev.data_load.{DataLoadOption, MHealthUser}
-import dev.data_load.DataLoadOption.spark
 import org.apache.spark.sql.functions._
 import org.apache.spark.sql.{DataFrame, Dataset}
 import org.scalatest.FunSuite
