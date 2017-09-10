@@ -7,8 +7,8 @@ package data_load_test
   * Also added a monotonically increasing id()
   */
 
-import dev.data_load.{DataLoad, MHealthUser}
-import dev.data_load.DataLoad.spark
+import dev.data_load.{DataLoadOption, MHealthUser}
+import dev.data_load.DataLoadOption.spark
 import org.apache.spark.sql.functions._
 import org.apache.spark.sql.{DataFrame, Dataset}
 import org.scalatest.FunSuite

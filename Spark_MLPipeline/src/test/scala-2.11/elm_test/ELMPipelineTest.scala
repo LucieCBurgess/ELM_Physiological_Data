@@ -1,7 +1,7 @@
 package elm_test
 
 import data_load_test.SparkSessionTestWrapper
-import dev.data_load.DataLoad
+import dev.data_load.DataLoadOption
 import org.apache.spark.ml.linalg.{DenseVector, Vector}
 import org.apache.spark.ml.{Estimator, Pipeline, PipelineStage}
 import org.apache.spark.ml.feature.{StringIndexer, VectorAssembler, VectorSlicer}
@@ -29,7 +29,7 @@ class ELMPipelineTest extends FunSuite {
     val fileName: String = "smalltest.txt"
 
     /** Load training and test data and cache it */
-    val data = DataLoad.createDataFrame(fileName) match {
+    val data = DataLoadOption.createDataFrame(fileName) match {
       case Some(df) => df
         .filter($"activityLabel" > 0)
         .withColumn("binaryLabel", when($"activityLabel".between(1, 3), 0).otherwise(1))

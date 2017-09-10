@@ -11,7 +11,7 @@ import org.scalatest.{BeforeAndAfterEach, FunSuite, Matchers}
 
 case class Person(name: String, age: Int)
 
-class SingleDataLoadTest extends FunSuite with BeforeAndAfterEach {
+class DataLoadExampleTest extends FunSuite with BeforeAndAfterEach {
 
   private val master = "local[*]"
   private val appName = "data_load_testing"

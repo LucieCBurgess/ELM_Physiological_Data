@@ -1,7 +1,7 @@
 package dev.elm
 
 import dev.logreg.{LRParams, SparkSessionWrapper}
-import dev.data_load.{DataLoad, MHealthUser}
+import dev.data_load.{DataLoadOption, MHealthUser}
 import org.apache.spark.ml.classification.{LogisticRegression, LogisticRegressionModel}
 import org.apache.spark.ml.evaluation.{BinaryClassificationEvaluator, Evaluator}
 import org.apache.spark.ml.linalg.{DenseVector => SDV}
@@ -33,7 +33,7 @@ object ELMPipeline {
     val fileName: String = "mHealth_subject1.txt"
 
     /** Load training and test data and cache it */
-    val data = DataLoad.createDataFrame(fileName) match {
+    val data = DataLoadOption.createDataFrame(fileName) match {
       case Some(df) => df
         .filter($"activityLabel" > 0.0)
         .withColumn("binaryLabel", when($"activityLabel".between(1.0, 3.0), 0.0).otherwise(1.0))

@@ -1,7 +1,7 @@
 package dev.pca
 
 import dev.logreg.{LRParams, SparkSessionWrapper}
-import dev.data_load.{DataLoad, MHealthUser}
+import dev.data_load.{DataLoadOption, MHealthUser}
 import org.apache.spark.ml.classification.{LogisticRegression, LogisticRegressionModel}
 import org.apache.spark.ml.evaluation.{BinaryClassificationEvaluator, Evaluator}
 import org.apache.spark.ml.feature.{VectorAssembler, PCA}
@@ -31,7 +31,7 @@ object PCAPipeline extends SparkSessionWrapper {
       println(s"PCA pipeline component added to LR model: \n$defaultParams")
 
       /** Load training and test data and cache it */
-      val data = DataLoad.createDataFrame(fileName) match {
+      val data = DataLoadOption.createDataFrame(fileName) match {
         case Some(df) => df
           .filter($"activityLabel" > 0)
           .withColumn("binaryLabel", when($"activityLabel".between(1, 3), 0).otherwise(1))

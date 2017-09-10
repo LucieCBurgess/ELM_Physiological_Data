@@ -4,7 +4,7 @@ import breeze.linalg.{*, pinv, DenseMatrix => BDM, DenseVector => BDV}
 import breeze.linalg._
 import breeze.numerics._
 import breeze.numerics.sigmoid
-import dev.data_load.DataLoad
+import dev.data_load.DataLoadOption
 import org.apache.spark.ml.linalg.{Vector, DenseVector => SDV, DenseMatrix => SDM}
 import org.apache.spark.ml.feature.{StringIndexer, VectorAssembler, VectorSlicer}
 import org.apache.spark.rdd.RDD
@@ -26,7 +26,7 @@ class ELMPredictRawTest extends FunSuite with BeforeAndAfter {
   val fileName: String = "smalltest.txt" //Has 22 rows of data with 3 features
 
   /** Load training and test data and cache it */
-  val data = DataLoad.createDataFrame(fileName) match {
+  val data = DataLoadOption.createDataFrame(fileName) match {
     case Some(df) => df
       .filter($"activityLabel" > 0)
       .withColumn("binaryLabel", when($"activityLabel".between(1, 3), 0).otherwise(1))

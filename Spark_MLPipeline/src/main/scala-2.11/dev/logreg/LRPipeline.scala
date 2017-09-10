@@ -8,7 +8,7 @@ package dev.logreg
 
 //FIXME - could do with more unit testing
 
-import dev.data_load.DataLoad
+import dev.data_load.DataLoadOption
 import org.apache.spark.ml.classification.{LogisticRegression, LogisticRegressionModel}
 import org.apache.spark.ml.evaluation.{BinaryClassificationEvaluator, Evaluator}
 import org.apache.spark.ml.feature.VectorAssembler
@@ -38,7 +38,7 @@ object LRPipeline {
     println(s"Logistic Regression Example from the Spark examples with some dummy data and parameters: \n$params")
 
     /** Load training and test data and cache it */
-    val df2 = DataLoad.createDataFrame(fileName) match {
+    val df2 = DataLoadOption.createDataFrame(fileName) match {
       case Some(df) => df
         .filter($"activityLabel" > 0)
         .withColumn("binaryLabel", when($"activityLabel".between(1.0, 3.0), 0.0).otherwise(1.0))

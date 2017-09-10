@@ -28,10 +28,10 @@ import org.apache.spark.sql.types._
   */
 class ELMModel(override val uid: String, val modelWeights: BDM[Double], val modelBias: BDV[Double], val modelBeta: BDV[Double],
                val modelHiddenNodes: Int, val modelAF: String, val modelNumFeatures: Int)
-  extends ClassificationModel[Vector, ELMModel] with SparkSessionWrapper
+  extends ClassificationModel[Vector, ELMModel]
     with ELMParams with DefaultParamsWritable {
 
-  import spark.implicits._
+  //import spark.implicits._
 
   override def copy(extra: ParamMap): ELMModel = {
     val copied = new ELMModel(uid, modelWeights, modelBias, modelBeta, modelHiddenNodes, modelAF, modelNumFeatures)
