@@ -11,7 +11,7 @@ import org.scalatest.FunSuite
   * Tests for 3 and 10 files.
   * ALL TESTS PASS
   */
-class DataLoadWTFTest extends FunSuite with SparkSessionTestWrapper {
+class DataLoadWTFTest extends FunSuite with SparkSessionDataLoadTestWrapper {
 
 
     test("[01] Loading data from three files results in single file of correct size") {
@@ -72,5 +72,4 @@ class DataLoadWTFTest extends FunSuite with SparkSessionTestWrapper {
 
       assert(data.count == dfs.map(d => d.count).reduce(_+_))
     }
-
 }

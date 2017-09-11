@@ -170,5 +170,5 @@ class ELMPredictRawTest extends FunSuite with BeforeAndAfter {
     assert(featuresMatrix.rows == 22)
     assert(featuresMatrix.cols == 3)
   }
-
+  spark.stop()
 }

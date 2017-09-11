@@ -1,6 +1,5 @@
 package elm_test
 
-import data_load_test.SparkSessionTestWrapper
 import dev.data_load.DataLoadOption
 import org.apache.spark.ml.linalg.{DenseVector, Vector}
 import org.apache.spark.ml.{Estimator, Pipeline, PipelineStage}
@@ -96,4 +95,5 @@ class ELMPipelineTest extends FunSuite {
         .transform(data)
       transformed.show()
     }
+  spark.stop()
 }

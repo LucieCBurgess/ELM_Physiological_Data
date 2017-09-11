@@ -1,23 +1,22 @@
 package elm_test
 
 import breeze.linalg.{*, pinv, DenseMatrix => BDM, DenseVector => BDV}
-import breeze.linalg._
-import breeze.numerics._
 import breeze.numerics.sigmoid
 import dev.data_load.DataLoadOption
 import org.apache.spark.ml.linalg.Vector
-import org.apache.spark.ml.feature.{StringIndexer, VectorAssembler, VectorSlicer}
+import org.apache.spark.ml.feature.VectorAssembler
 import org.apache.spark.rdd.RDD
-import org.apache.spark.sql.functions.{col, monotonically_increasing_id, when}
+import org.apache.spark.sql.functions.{monotonically_increasing_id, when}
 import org.apache.spark.sql.{DataFrame, Dataset, SparkSession}
 import org.scalatest.FunSuite
 
 /**
   * Created by lucieburgess on 02/09/2017.
+  * ALL TESTS PASS 11/09/2017 but spark.stop() has to be removed from the end of the file
   */
 class ELMAlgoTest extends FunSuite {
 
-  lazy val spark: SparkSession = {
+  val spark: SparkSession = {
     SparkSession.builder().master("local[*]").appName("ELMAlgoTest").getOrCreate()
   }
 
@@ -56,6 +55,7 @@ class ELMAlgoTest extends FunSuite {
     new BDV[Double](array)
   }
 
+  /** Test for construction of the labels vector */
   test("[01] Can create an array of doubles from a single DataFrame column") {
 
     val array: Array[Double] = dataWithFeatures.select("acc_Chest_X").as[Double].collect()
@@ -64,6 +64,7 @@ class ELMAlgoTest extends FunSuite {
     }
   }
 
+  /** Test for construction of the features matrix */
   test("[02] Can create an array of all the data in a features Vector") {
 
     val array = dataWithFeatures.select("features").rdd.flatMap(r => r.getAs[Vector](0).toArray).collect
@@ -72,6 +73,10 @@ class ELMAlgoTest extends FunSuite {
     }
   }
 
+  /** Test for construction of the features matrix - checks that the BDM is of the correct size
+    * This is needed because extracting the feature vector into an array from an RDD and into a BDM
+    * of column-major order effectively transposes the matrix
+    */
   test("[03] Computing X (features matrix) results in a matrix of correct cardinality") {
 
     val array = dataWithFeatures.select("features").rdd.flatMap(r => r.getAs[Vector](0).toArray).collect
@@ -250,7 +255,7 @@ class ELMAlgoTest extends FunSuite {
     assert(beta.length == 10)
 
   }
-
+  //spark.stop()
 }
 
 

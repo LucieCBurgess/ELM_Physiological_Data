@@ -13,7 +13,7 @@ import org.apache.spark.sql.functions._
 import org.apache.spark.sql.{DataFrame, Dataset}
 import org.scalatest.FunSuite
 
-class GlobalTempViewTest extends FunSuite with SparkSessionTestWrapper {
+class GlobalTempViewTest extends FunSuite with SparkSessionDataLoadTestWrapper {
 
   import spark.implicits._
 
@@ -66,5 +66,4 @@ class GlobalTempViewTest extends FunSuite with SparkSessionTestWrapper {
       result2.collect()(0)
     }
   }
-
 }

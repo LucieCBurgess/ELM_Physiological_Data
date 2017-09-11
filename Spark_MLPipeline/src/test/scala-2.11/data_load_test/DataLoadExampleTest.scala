@@ -4,10 +4,11 @@ package data_load_test
   * Created by lucieburgess on 13/08/2017.
   * Uses person.txt in the Spark/scala/resources folder as a simple test case to test loading and basic manipulation
   * of data from a single file
+  * TESTS PASS 11/09/2018
   */
 
 import org.apache.spark.sql.SparkSession
-import org.scalatest.{BeforeAndAfterEach, FunSuite, Matchers}
+import org.scalatest.{BeforeAndAfterEach, FunSuite}
 
 case class Person(name: String, age: Int)
 

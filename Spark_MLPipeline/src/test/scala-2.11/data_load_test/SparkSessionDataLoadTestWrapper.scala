@@ -7,7 +7,7 @@ import org.apache.spark.sql.SparkSession
   * Alternative way to run the Spark Session in a shared environment for each test
   * see https://stackoverflow.com/questions/43729262/how-to-write-unit-tests-in-spark-2-0
   */
-trait SparkSessionTestWrapper {
+trait SparkSessionDataLoadTestWrapper {
 
   val spark: SparkSession = {
     SparkSession.builder().master("local[*]").appName("testing").getOrCreate()

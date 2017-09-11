@@ -14,7 +14,7 @@ import org.scalatest.FunSuite
 import org.apache.spark.sql.functions._
 
 
-class AddNewColumnTest extends FunSuite with SparkSessionTestWrapper {
+class AddNewColumnTest extends FunSuite with SparkSessionDataLoadTestWrapper {
 
   import spark.implicits._
 

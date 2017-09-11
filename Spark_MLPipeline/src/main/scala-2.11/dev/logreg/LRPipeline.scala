@@ -2,11 +2,10 @@ package dev.logreg
 
 /**
   * Created by lucieburgess on 15/08/2017.
-  * Simple pipeline following numerous online examples to get the hang of things
+  * Logistic Regression pipeline following numerous online examples to learn Spark programming constructs and apply pipeline
+  * model to ELM
   * Main method is in LRTestMain.scala
   */
-
-//FIXME - could do with more unit testing
 
 import dev.data_load.{DataLoadOption, DataLoadWTF}
 import org.apache.spark.ml.classification.{LogisticRegression, LogisticRegressionModel}
@@ -16,14 +15,16 @@ import org.apache.spark.ml.tuning.{CrossValidator, ParamGridBuilder}
 import org.apache.spark.ml.{Pipeline, PipelineModel, PipelineStage, Transformer}
 import org.apache.spark.sql.{DataFrame, SparkSession}
 import org.apache.spark.sql.functions._
-import org.apache.log4j.{Level, Logger}
-
 import scala.collection.mutable
-
 
 object LRPipeline {
 
-  val fileName: String = "mHealth_subject1.txt"
+  /** Amend singleFileUsed to false if more than a single file is being used
+    * Amend "Multiple3" to "Multiple10" if running pipeline across full dataset of 10 users
+    */
+  val singleFileName: String = "mHealth_subject1.txt"
+  val singleFileUsed: Boolean = false
+  val multipleFolder: String = "Multiple10"
 
   def run(params: LRParams) :Unit = {
 
@@ -37,28 +38,24 @@ object LRPipeline {
     println(s"Logistic Regression applied to the mHealth data with parameters: \n$params")
 
     /** Load training and test data and cache it */
-    val df2 = DataLoadOption.createDataFrame(fileName) match {
+    val df2 = if(singleFileUsed) DataLoadOption.createDataFrame(singleFileName) match {
       case Some(df) => df
-        .filter($"activityLabel" > 0)
+      case None => throw new UnsupportedOperationException("Couldn't create DataFrame")
+      }
+      else DataLoadWTF.createDataFrame(multipleFolder)
+
+    val df3 = df2.filter($"activityLabel" > 0)
         .withColumn("binaryLabel", when($"activityLabel".between(1.0, 3.0), 0.0).otherwise(1.0))
         .withColumn("uniqueID", monotonically_increasing_id())
-      case None => throw new UnsupportedOperationException("Couldn't create DataFrame")
-    }
-
-//    val df = DataLoadWTF.createDataFrame("Multiple3")
-//      .filter($"activityLabel" > 0)
-//      .withColumn("binaryLabel", when($"activityLabel".between(1.0, 3.0), 0.0).otherwise(1.0))
 
     /** Set up the pipeline stages */
     val pipelineStages = new mutable.ArrayBuffer[PipelineStage]()
 
-    df2.show()
+    df3.show()
 
     /**
-      * Combine columns which we think will predict Activity into a single feature vector
-      * In this simple example we will just include a few features as a proof of concept
-      * Sets the input columns as the array of features and the output column as a new column, a vector modelFeatures
-      * Add the featureAssembler to the pipeline
+      * Combine columns which we think will predict activity into a single feature vector
+      * Sets the input columns and the output column as a new column, a vector, 'features' and adds to the pipeline
       */
     val featureCols = Array("acc_Chest_X", "acc_Chest_Y", "acc_Chest_Z", "acc_Arm_X", "acc_Arm_Y", "acc_Arm_Z")
     val featureAssembler = new VectorAssembler().setInputCols(featureCols).setOutputCol("features")
@@ -78,12 +75,12 @@ object LRPipeline {
     println("LogisticRegression parameters:\n" + lr.explainParams() + "\n")
 
     /** Randomly split data into test, train with 50% split */
-    // FIXME - add this to params. See DecisionTreeExample. Basically need to amend DataLoad method to include params
-    //val Array(trainData, testData) = df.randomSplit(Array(0.5,0.5),seed = 12345)
-
     val train: Double = 1-params.fracTest
     val test: Double = params.fracTest
-    val Array(trainData, testData) = df2.randomSplit(Array(train, test), seed = 12345) // was data
+    val Array(trainData, testData) = df3.randomSplit(Array(train, test), seed = 12345)
+
+    println(s"The size of the training set is ${trainData.count()}")
+    println(s"The size of the test set is ${testData.count()}")
 
     /** Set the pipeline from the pipeline stages */
     val pipeline: Pipeline = new Pipeline().setStages(pipelineStages.toArray)
@@ -100,13 +97,12 @@ object LRPipeline {
     println(s"Weights: ${lrModel.coefficients} Intercept: ${lrModel.intercept}")
 
     /** Make predictions and evaluate the model using BinaryClassificationEvaluator */
-    println("************ Evaluating model and calculating train and test areaUnderROC - larger is better ************")
+    println("Evaluating model and calculating train and test AUROC - larger is better")
     evaluateClassificationModel("Train",pipelineModel, trainData)
     evaluateClassificationModel("Test", pipelineModel, testData)
 
     /** Perform cross-validation on the dataset */
-    // FIXME - how to choose different features and change these parameters
-    println("************* Performing cross validation and computing best parameters ************")
+    println("Performing cross validation and computing best parameters")
     performCrossValidation(trainData, testData, params, pipeline, lr)
 
     spark.stop()
@@ -146,7 +142,9 @@ object LRPipeline {
     val output = evaluator.evaluate(predictions)
 
     println(s"Classification results for $modelName: ")
-    println(s"The accuracy of the model $modelName for input file $fileName using areaUnderROC is: $output")
+    if (singleFileUsed)
+    println(s"The accuracy of the model $modelName for input file $singleFileName using AUROC is: $output")
+    else println(s"The accuracy of the model $modelName for input file $multipleFolder using AUROC is $output")
 
   }
 

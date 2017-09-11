@@ -33,7 +33,7 @@ class ELMClassifier(val uid: String) extends Classifier[Vector, ELMClassifier, E
     * Trains the model to predict the training labels based on the ELMAlgorithm class.
     * @param ds the dataset to be operated on
     * @return an ELMModel which extends ClassificationModel with the output weight vector modelBeta calculated, of length L,
-    *         where L is the number of hidden nodes, with modelBias function and modelWeights also calculated.
+    *         where L is the number of hidden nodes, with modelBias vector and modelWeights matrix also calculated.
     *         Driven by algorithm in ELMClassifierAlgo.
     */
   override def train(ds: Dataset[_]): ELMModel = {

@@ -11,7 +11,7 @@ import dev.data_load.{DataLoadOption, DataLoad}
 import org.apache.spark.sql.DataFrame
 import org.scalatest.FunSuite
 
-class DataLoadUnionTest extends FunSuite with SparkSessionTestWrapper {
+class DataLoadUnionTest extends FunSuite with SparkSessionDataLoadTestWrapper {
 
   import spark.implicits._
 
@@ -69,5 +69,4 @@ class DataLoadUnionTest extends FunSuite with SparkSessionTestWrapper {
     assert(completeDF.count.equals(dfs.map(d => d.count()).reduce(_+_)))
 
   }
-  spark.stop()
 }
