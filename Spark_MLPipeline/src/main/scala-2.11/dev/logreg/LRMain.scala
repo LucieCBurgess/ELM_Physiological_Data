@@ -3,7 +3,6 @@ package dev.logreg
 import org.apache.log4j.{Level, Logger}
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.ml.param.{ParamMap, Params}
-import scopt.OptionParser
 
 /**
   * Created by lucieburgess on 25/08/2017.
@@ -21,7 +20,7 @@ object LRMain {
       */
     val defaultParams = LRParams()
 
-    val parser = new OptionParser[LRParams]("Logistic Regression test using src/main/scala/org/apache/spark/examples/ml/LogisticRegressionExample.scala") {
+    val parser = new scopt.OptionParser[LRParams]("Logistic Regression test using src/main/scala/org/apache/spark/examples/ml/LogisticRegressionExample.scala") {
 
       head("Logistic Regression parameters")
 
