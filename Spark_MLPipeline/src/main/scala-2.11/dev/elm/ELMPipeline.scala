@@ -30,7 +30,7 @@ object ELMPipeline {
 
     import spark.implicits._
 
-    val fileName: String = "mHealth_subject1.txt"
+    val fileName: String = "smalltest.txt"
 
     /** Load training and test data and cache it */
     val data = DataLoadOption.createDataFrame(fileName) match {
@@ -52,21 +52,16 @@ object ELMPipeline {
       * NB. Pipeline.fit() command is not picking up the VectorAssembler properly so we have to transform the data outside the pipeline
       */
     val featureCols = Array("acc_Chest_X", "acc_Chest_Y", "acc_Chest_Z")
-    //FIXME not currently used
-    val allowedInputCols: Array[String] = ScalaReflection.schemaFor[MHealthUser].dataType match {
-      case s: StructType => s.fieldNames.array
-      case _ => Array[String]()
-    }
 
+    checkFeatureColsInSchema(featureCols)
+
+    /** Add the features to the DataFrame using VectorAssembler. This has to be done outside pipelineStages due to a bug in the API */
     val featureAssembler = new VectorAssembler().setInputCols(featureCols).setOutputCol("features")
-    //pipelineStages += featureAssembler //KEEP THIS OUT - pipelineStages not picking up transform method correctly??
-
-    /** Add the features column, "features", to the input data frame using VectorAssembler */
     val dataWithFeatures = featureAssembler.transform(data)
 
     /** Create the classifier, set parameters for training */
     val elm = new ELMClassifier()
-      .setFeaturesCol("features") // could be "extracted features" if we need to plug in the feature extraction technique
+      .setFeaturesCol("features")
       .setLabelCol("binaryLabel")
       .setHiddenNodes(10)
       .setActivationFunc("sigmoid")
@@ -79,14 +74,12 @@ object ELMPipeline {
     val pipeline: Pipeline = new Pipeline().setStages(pipelineStages.toArray)
 
     /** UseFracTest to set up the (trainData, testData) tuple and randomly split the preparedData */
-    val train: Double = 1-elm.getFracTest
+    val train: Double = 1 - elm.getFracTest
     val test: Double = elm.getFracTest
-    val Array(trainData, testData) = dataWithFeatures.randomSplit(Array(train, test), seed = 12345) // was data
+    val Array(trainData, testData) = dataWithFeatures.randomSplit(Array(train, test), seed = 12345)
 
     /** Fit the pipeline, which includes training the model, on the preparedData */
     val startTime = System.nanoTime()
-
-    println(s"************* Training the model ****************")
 
     val pipelineModel: PipelineModel = pipeline.fit(trainData)
     val elmModel = pipelineModel.stages.last.asInstanceOf[ELMModel]
@@ -105,9 +98,6 @@ object ELMPipeline {
     val predictionsTrain = elmModel.transform(trainData).cache()
     val predictTimeTrain = (System.nanoTime() - startTime2) / 1e9
     println(s"Prediction time for the training data: $predictTimeTrain seconds")
-
-    //println(s"The schema for the predicted dataset based on the training data is ${predictionsTrain.printSchema}")
-    //predictionsTrain.printSchema
     println(s"Printing predictions for the training data")
     predictionsTrain.show(10)
 
@@ -115,17 +105,19 @@ object ELMPipeline {
     val predictionsTest: DataFrame = elmModel.transform(testData).cache()
     val predictTimeTest = (System.nanoTime() - startTime3) / 1e9
     println(s"Prediction time for the test data: $predictTimeTest seconds")
-    //println(s"The schema for the predicted dataset based on the test data is ${predictionsTest.printSchema}")
-    //predictionsTest.printSchema
     println(s"Printing predictions for the test data")
     predictionsTest.show(10)
 
     //FIXME - update to include BinaryClassificationEvaluator, once the ELM is working
   }
-}
 
-//    def checkInAllowedInputCols(feature: String): String = {
-//      if (!allowedInputCols.contains(feature)) throw new IllegalArgumentException("Feature is not in the schema")
-//      else featureCols.addString(feature)
-//    }
-//
+  /** Helper method to check the selected feature columns are in the schema */
+  def checkFeatureColsInSchema(featureCols: Array[String]): Array[String] = {
+    val allowedInputCols: Array[String] = ScalaReflection.schemaFor[MHealthUser].dataType match {
+      case s: StructType => s.fieldNames.array
+      case _ => Array[String]()
+    }
+    if (allowedInputCols.contains(featureCols)) featureCols
+    else throw new IllegalArgumentException("Feature cols not in schema")
+  }
+}

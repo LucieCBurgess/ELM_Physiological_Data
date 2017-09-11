@@ -1,12 +1,10 @@
 package elm_test
 
 import breeze.linalg.{*, pinv, DenseMatrix => BDM, DenseVector => BDV}
-import breeze.linalg._
-import breeze.numerics._
 import breeze.numerics.sigmoid
 import dev.data_load.DataLoadOption
-import org.apache.spark.ml.linalg.{Vector, DenseVector => SDV, DenseMatrix => SDM}
-import org.apache.spark.ml.feature.{StringIndexer, VectorAssembler, VectorSlicer}
+import org.apache.spark.ml.linalg.{Vector, DenseVector => SDV}
+import org.apache.spark.ml.feature.VectorAssembler
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.functions._
 import org.apache.spark.sql.{DataFrame, Dataset, SparkSession}
@@ -16,7 +14,7 @@ import org.scalatest.{BeforeAndAfter, FunSuite}
 /**
   * Created by lucieburgess on 04/09/2017.
   */
-class ELMPredictRawTest extends FunSuite with BeforeAndAfter {
+class ELMPredictRawTest extends FunSuite {
 
   lazy val spark: SparkSession = {
     SparkSession.builder().master("local[*]").appName("ELMModelPredictRaw_testing").getOrCreate()
@@ -92,7 +90,7 @@ class ELMPredictRawTest extends FunSuite with BeforeAndAfter {
   /** Try again simple simple matrix multiplication: T = Beta x H where H is calculated from the new dataset */
   test("[02] Can calculate T using pass in a features vector to predictRaw()") {
 
-    assert(beta.length == 10)
+    assert(beta.length === 10)
 
     //val features: RDD[Vector] = dataWithFeatures.select("features").rdd.map(r => r.getAs[Vector](0))
 
@@ -170,5 +168,5 @@ class ELMPredictRawTest extends FunSuite with BeforeAndAfter {
     assert(featuresMatrix.rows == 22)
     assert(featuresMatrix.cols == 3)
   }
-  spark.stop()
+  //spark.stop() Do not include Spark.stop() here. It prevents the tests from running
 }
