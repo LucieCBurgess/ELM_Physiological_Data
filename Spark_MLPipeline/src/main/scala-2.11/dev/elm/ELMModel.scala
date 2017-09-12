@@ -19,10 +19,11 @@ import org.apache.spark.sql.types._
   * This uses the default implementation of transform(), which reads column "features" and
   * outputs columns "prediction". 'rawPrediction" is calculated for each labelled point in the dataset
   * from the parameters passed into ELMClassifier, based on the ELMClassifier trained using column "features".
+  * predictRaw(features: Vector) :Vector is implemented.
   * It also uses the default implementation of transformSchema(schema: StructType).
   *
   * This uses the default implementation of predict(), which chooses the label corresponding to
-  * the maximum value returned by [[predictRaw()]], as stated in the Classifier Model API
+  * the maximum value returned by [[predictRaw()]], as stated in the Classifier Model API.
   *
   */
 class ELMModel(override val uid: String, val modelWeights: BDM[Double], val modelBias: BDV[Double], val modelBeta: BDV[Double],
@@ -30,33 +31,34 @@ class ELMModel(override val uid: String, val modelWeights: BDM[Double], val mode
   extends ClassificationModel[Vector, ELMModel]
     with ELMParams with DefaultParamsWritable {
 
-  //import spark.implicits._
-
+  /**
+    * Implements value in API class ml.Model
+    * Copies extra parameters into the ParamMap
+    */
   override def copy(extra: ParamMap): ELMModel = {
     val copied = new ELMModel(uid, modelWeights, modelBias, modelBeta, modelHiddenNodes, modelAF, modelNumFeatures)
     copyValues(copied, extra).setParent(parent)
   }
 
-  /** Number of classes the label can take. 2 indicates binary classification */
+  /**
+    * Implements value in ml.classification.ClassificationModel
+    * Number of classes the label can take. 2 indicates binary classification
+    */
   override val numClasses: Int = 2
 
-  val inputColName = "features"
-  val outputColName = "prediction"
+  //val inputColName = "features"
+  //val outputColName = "prediction"
 
   /**
     * @param features, the vector of features being input into the model
-    * @return vector where element i is the raw prediction for label i. This raw prediction may be any real number,
+    * @return vector of predictions for a single sample in the input dataset,
+    *         where element i is the raw prediction for label i. This raw prediction may be any real number,
     *         where a larger value indicates greater confidence for that label
     *         The underlying method in ClassificationModel then predicts raw2prediction, which given a vector of raw predictions
     *         selects the predicted labels. raw2prediction can be overridden to support thresholds which favour particular labels.
-    *         NB. data.select("features") gives an instance of a dataframe, so this is the type of the features column
     */
-    //FIXME - re-write this function to take a Vector parameter
-    // Problem is that featuresArray is not properly stripping out the features. Need to change FeaturesType to something we
-    // can actually pass in. This might involve re-writing transform instead, as it takes a dataset
   override def predictRaw(features: Vector) :Vector = {
 
-      //val numSamples = 9
       val featuresArray = features.toArray
       val featuresMatrix = new BDM[Double](modelNumFeatures, 1, featuresArray) //numFeatures x 1
 

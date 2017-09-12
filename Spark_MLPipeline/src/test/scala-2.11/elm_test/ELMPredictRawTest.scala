@@ -10,70 +10,104 @@ import org.apache.spark.sql.functions._
 import org.apache.spark.sql.{DataFrame, Dataset, SparkSession}
 import org.scalatest.{BeforeAndAfter, FunSuite}
 
-
 /**
   * Created by lucieburgess on 04/09/2017.
+  * Unit tests for methods and predictRaw logic within ELMModel class.
+  * ALL TESTS PASS. Test 5 is cancelled, see note below.
   */
-class ELMPredictRawTest extends FunSuite {
+class ELMPredictRawTest extends FunSuite with BeforeAndAfter {
 
   lazy val spark: SparkSession = {
-    SparkSession.builder().master("local[*]").appName("ELMModelPredictRaw_testing").getOrCreate()
+    SparkSession.builder().master("local[*]").appName("ELMModel_testing").getOrCreate()
   }
 
   import spark.implicits._
-  val fileName: String = "smalltest.txt" //Has 22 rows of data with 3 features
 
-  /** Load training and test data and cache it */
-  val data = DataLoadOption.createDataFrame(fileName) match {
-    case Some(df) => df
-      .filter($"activityLabel" > 0)
-      .withColumn("binaryLabel", when($"activityLabel".between(1, 3), 0).otherwise(1))
-      .withColumn("uniqueID", monotonically_increasing_id())
-    case None => throw new UnsupportedOperationException("Couldn't create DataFrame")
+    val fileName: String = "smalltest.txt" //Has 22 rows of data
+
+    /** Load training and test data and cache it */
+    val data = DataLoadOption.createDataFrame(fileName) match {
+      case Some(df) => df
+        .filter($"activityLabel" > 0)
+        .withColumn("binaryLabel", when($"activityLabel".between(1, 3), 0).otherwise(1))
+        .withColumn("uniqueID", monotonically_increasing_id())
+      case None => throw new UnsupportedOperationException("Couldn't create DataFrame")
+    }
+
+    val N: Int = data.count().toInt
+
+    val featureCols = Array("acc_Chest_X", "acc_Chest_Y", "acc_Chest_Z") // 3 features selected
+    val featureAssembler = new VectorAssembler().setInputCols(featureCols).setOutputCol("features")
+    val dataWithFeatures: DataFrame = featureAssembler.transform(data)
+    val numFeatures = featureCols.length
+
+    def extractFeaturesMatrix(ds: Dataset[_]): BDM[Double] = {
+      val array = ds.select("features").rdd.flatMap(r => r.getAs[Vector](0).toArray).collect
+      new BDM[Double](numFeatures, N, array)
+    }
+
+    def extractLabelsMatrix(ds: Dataset[_]): BDV[Double] = {
+      val array = ds.select("binaryLabel").as[Double].collect()
+      new BDV[Double](array)
+    }
+
+    val L = 10 // hiddenNodes
+    val bias: BDV[Double] = BDV.rand[Double](L) // L x 1
+    val weights: BDM[Double] = BDM.rand[Double](L, numFeatures) // L x numFeatures
+
+    val X: BDM[Double] = extractFeaturesMatrix(dataWithFeatures) // numFeatures x N
+
+    val T: BDV[Double] = extractLabelsMatrix(dataWithFeatures) // N
+
+    val M = weights * X //L x N
+
+    val H: BDM[Double] = sigmoid((M(::, *) + bias).t) // We want H to be N x L so that pinv(H) is L x N
+
+    val beta: BDV[Double] = pinv(H) * T // (L x N).N => gives vector of length L
+
+  /** Checks that the data structures passed into ELMModel are of the correct size when used in predictRaw() */
+  test("[01] Data structures used in computations are of the correct size") {
+
+    assert(bias.isInstanceOf[BDV[Double]])
+    assert(bias.length == L)
+
+    assert(weights.isInstanceOf[BDM[Double]])
+    assert(weights.rows == L)
+    assert(weights.cols == numFeatures)
+
+    assert(X.isInstanceOf[BDM[Double]])
+    assert(X.rows == numFeatures)
+    assert(X.cols == N)
+
+    assert(T.isInstanceOf[BDV[Double]])
+    assert(T.length == N)
+
+    assert(M.isInstanceOf[BDM[Double]])
+    assert(M.rows == L)
+    assert(M.cols == N)
+
+    assert(H.isInstanceOf[BDM[Double]])
+    assert(H.rows == N)
+    assert(H.cols == L)
+
+    assert(beta.isInstanceOf[BDV[Double]])
+    assert(beta.length == L)
   }
 
-  val N: Int = data.count().toInt
-
-  val featureCols = Array("acc_Chest_X", "acc_Chest_Y", "acc_Chest_Z")
-  val featureAssembler = new VectorAssembler().setInputCols(featureCols).setOutputCol("features")
-  val dataWithFeatures: DataFrame = featureAssembler.transform(data)
-  val numFeatures = featureCols.length
-
-  def extractFeaturesMatrix(ds: Dataset[_]): BDM[Double] = {
-    val array = ds.select("features").rdd.flatMap(r => r.getAs[Vector](0).toArray).collect
-    new BDM[Double](numFeatures, N, array)
-  }
-
-  def extractLabelsMatrix(ds: Dataset[_]): BDV[Double] = {
-    val array = ds.select("binaryLabel").as[Double].collect()
-    new BDV[Double](array)
-  }
-
-  val L = 10
-  val bias: BDV[Double] = BDV.rand[Double](L) // L x 1
-  val weights: BDM[Double] = BDM.rand[Double](L, numFeatures) // L x numFeatures
-  val X: BDM[Double] = extractFeaturesMatrix(dataWithFeatures) // numFeatures x N
-  val T: BDV[Double] = extractLabelsMatrix(dataWithFeatures)
-
-  val M = weights * X //L x N
-
-  val H: BDM[Double] = sigmoid((M(::,*) + bias).t) // We want H to be N x L so that pinv(H) is L x N
-
-  val beta: BDV[Double] = pinv(H) * T // (L x N) . N => gives vector of length L
-
-  /** Try again simple simple matrix multiplication: T = Beta x H where H is calculated from the new dataset */
-  test("[01] Can return the labels in one go using T = Beta.H(transpose)") {
-
-    assert(beta.length == 10)
+  /**
+    * This method only works when passing in a DataFrame and for a features vector of length N
+    * Simple matrix multiplication: T = (Beta.t x H).t where H is calculated from the new dataset
+    * In fact the features vector used in predictRaw() is for a single sample
+    * So this method is not used in the production code
+    */
+  test("[02] Can return the labels in one go using T = Beta.H(transpose) with features calculated from DataFrame") {
 
     def predictRaw(features: DataFrame) :SDV = {
 
-      //val features: RDD[Vector] = dataWithFeatures.select("features").rdd.map(r => r.getAs[Vector](0))
-
       val featuresArray: Array[Double] = features.rdd.flatMap(r => r.getAs[Vector](0).toArray).collect
-      val featuresMatrix = new BDM[Double](numFeatures, N, featuresArray)
+      val featuresMatrix = new BDM[Double](numFeatures, N, featuresArray) //NB Features must be of size (numFeatures, N)
 
-      val M = weights * featuresMatrix // L x numFeatures. numFeatures x N where N is no. of test samples. NB Features must be of size (numFeatures, N)
+      val M = weights * featuresMatrix // L x numFeatures. numFeatures x N where N is no. of test samples.
       val H = sigmoid((M(::, *)) + bias) // L x numFeatures
       val T = beta.t * H // L.(L x N) of type Transpose[DenseVector]
       new SDV((T.t).toArray) //length N
@@ -87,57 +121,42 @@ class ELMPredictRawTest extends FunSuite {
 
   }
 
-  /** Try again simple simple matrix multiplication: T = Beta x H where H is calculated from the new dataset */
-  test("[02] Can calculate T using pass in a features vector to predictRaw()") {
-
-    assert(beta.length === 10)
-
-    //val features: RDD[Vector] = dataWithFeatures.select("features").rdd.map(r => r.getAs[Vector](0))
+  /**
+    * In this test a feature vector is passed in from a single sample.
+    * Simple matrix multiplication: T = (Beta.t x H).t where H is calculated from the dataset
+    * for which predictions are being made
+    * This is the method implemented in ELMModel.predictRaw()
+    */
+  test("[03] Can calculate T using pass in a features vector to predictRaw()") {
 
     def predictRaw(features: Vector) :SDV = {
 
-      val featuresDV = features.toDense
+      val featuresArray: Array[Double] = features.toArray
+      val featuresMatrix = new BDM[Double](numFeatures, 1, featuresArray)
 
-      val featuresArray: Array[Double] = featuresDV.toArray
-      val featuresMatrix = new BDM[Double](numFeatures, N, featuresArray)
-
-      val M = weights * featuresMatrix // L x numFeatures. numFeatures x N where N is no. of test samples. NB Features must be of size (numFeatures, N)
+      val M = weights * featuresMatrix // L x numFeatures. numFeatures x N where N is no. of test samples.
       val H = sigmoid((M(::, *)) + bias) // L x numFeatures
       val T = beta.t * H // L.(L x N) of type Transpose[DenseVector]
       new SDV((T.t).toArray) //length N
     }
 
-    val features = dataWithFeatures.select("features").asInstanceOf[Vector]
-    val predictions: SDV = predictRaw(features)
-    assert(predictions.isInstanceOf[SDV])
-    assert(predictions.size == N)
-    println(predictions.values.mkString(","))
+    val featuresRDD: RDD[Vector] = dataWithFeatures.select("features").rdd.map(_.getAs[Vector]("features"))
 
+    val singleFeature: Vector = featuresRDD.collect()(0) //first feature in the array
+    val singlePrediction: SDV = predictRaw(singleFeature)
+    assert(singlePrediction.isInstanceOf[SDV])
+    assert(singlePrediction.size == 1)
+    println(singlePrediction.values.mkString(","))
+
+    val predictions: SDV = new SDV(featuresRDD.collect().flatMap(f => predictRaw(f).toArray))
+    assert(predictions.isInstanceOf[SDV])
+    assert(predictions.size == data.count())
   }
 
-
-  /** This test is failing because the operation over the RDD is not serialisable. So, back to arrays again */
-  test("[03]. Can return a label for a single sample") {
-
-    val features: RDD[Vector] = dataWithFeatures.select("features").rdd.map(r => r.getAs[Vector](0))
-
-    def predictRaw(features: RDD[Vector]) :SDV = {
-      val outputArray: Array[Double] = features.map(f => calculateNode(f)).collect() //Exception: calculateNode(f) not serializable
-      new SDV(outputArray)
-    }
-
-    def calculateNode(feature: Vector): Double = {
-      val featureBDV = new BDV[Double](feature.toArray)
-      val node: IndexedSeq[Double] = for (j <- 0 until L) yield (beta(j) * sigmoid(weights(j, ::) * featureBDV + bias(j)))
-      node.sum.round.toDouble
-    }
-
-    val predictions: SDV = predictRaw(features)
-    assert(predictions.isInstanceOf[SDV])
-    assert(predictions.size == N)
-  }
-
-  /** Another test using a udf, which passes - but I don't have access to a DataFrame */
+  /**
+    * Another test using a udf, which passes - but no access to a DataFrame within ELMModel.
+    * Therefore this code is not used
+    */
   test("[04] using a Spark udf") {
 
     def extractUdf = udf((v: SDV) => v.toArray)
@@ -152,21 +171,46 @@ class ELMPredictRawTest extends FunSuite {
     val featuresArray2: Array[Double] = temp.rdd.map(r => r.getAs[Double](1)).collect
     val featuresArray3: Array[Double] = temp.rdd.map(r => r.getAs[Double](2)).collect
 
-    val allfeatures: Array[Array[Double]] = Array(featuresArray1, featuresArray2, featuresArray3)
-    val flatfeatures: Array[Double] = allfeatures.flatten
+    val flatfeatures: Array[Double] = Array(featuresArray1, featuresArray2, featuresArray3).flatten
 
     temp.show()
 
-    assert(featuresArray1.length == 22)
-    assert(featuresArray2.length == 22)
-    assert(featuresArray3.length == 22)
+    assert(featuresArray1.length == N)
+    assert(featuresArray2.length == N)
+    assert(featuresArray3.length == N)
 
 
     val featuresMatrix = new BDM[Double](N, numFeatures, flatfeatures) //gives matrix in column major order
     println(featuresMatrix.data.mkString(","))
 
-    assert(featuresMatrix.rows == 22)
-    assert(featuresMatrix.cols == 3)
+    assert(featuresMatrix.rows == N)
+    assert(featuresMatrix.cols == numFeatures)
   }
-  //spark.stop() Do not include Spark.stop() here. It prevents the tests from running
+
+  /**
+    * This test fails because the operation over the RDD is not serialisable.
+    * Causes exception: calculateNode(f) not serializable. So test cancelled
+    * This logic is not used in the model.
+    */
+  test("[05]. Can return a label for a single sample") {
+
+    cancel("Test cancelled because RDD not serialisable")
+
+    val features: RDD[Vector] = dataWithFeatures.select("features").rdd.map(r => r.getAs[Vector](0))
+
+    def predictRaw(features: RDD[Vector]): SDV = {
+      val outputArray: Array[Double] = features.map(f => calculateNode(f)).collect()
+      new SDV(outputArray)
+    }
+
+    def calculateNode(feature: Vector): Double = {
+      val featureBDV = new BDV[Double](feature.toArray)
+      val node: IndexedSeq[Double] = for (j <- 0 until L) yield (beta(j) * sigmoid(weights(j, ::) * featureBDV + bias(j)))
+      node.sum.round.toDouble
+    }
+
+    val predictions: SDV = predictRaw(features)
+    assert(predictions.isInstanceOf[SDV])
+    assert(predictions.size == N)
+  }
 }

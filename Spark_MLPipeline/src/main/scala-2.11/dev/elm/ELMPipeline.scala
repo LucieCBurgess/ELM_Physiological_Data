@@ -32,7 +32,10 @@ object ELMPipeline {
 
     val fileName: String = "smalltest.txt"
 
-    /** Load training and test data and cache it */
+    /** Load training and test data and cache it
+      * A single method only is used here for one input dataset
+      * //FIXME - add the multiple dataload option to see if the method works on more than one file on the command line
+      */
     val data = DataLoadOption.createDataFrame(fileName) match {
       case Some(df) => df
         .filter($"activityLabel" > 0.0)
@@ -47,15 +50,15 @@ object ELMPipeline {
     /** Set up the pipeline stages */
     val pipelineStages = new mutable.ArrayBuffer[PipelineStage]()
 
-    /**
-      * Combine columns which we think will predict labels into a single feature vector
-      * NB. Pipeline.fit() command is not picking up the VectorAssembler properly so we have to transform the data outside the pipeline
-      */
+    /** Combine columns which we think will predict labels into a single feature vector */
     val featureCols = Array("acc_Chest_X", "acc_Chest_Y", "acc_Chest_Z")
-
     checkFeatureColsInSchema(featureCols)
 
-    /** Add the features to the DataFrame using VectorAssembler. This has to be done outside pipelineStages due to a bug in the API */
+    /**
+      * Add the features to the DataFrame using VectorAssembler.
+      * Pipeline.fit() command is not picking up the VectorAssembler properly so we have to transform the data outside the pipeline
+      * This has to be done outside pipelineStages due to a bug in the API
+      */
     val featureAssembler = new VectorAssembler().setInputCols(featureCols).setOutputCol("features")
     val dataWithFeatures = featureAssembler.transform(data)
 
@@ -111,13 +114,16 @@ object ELMPipeline {
     //FIXME - update to include BinaryClassificationEvaluator, once the ELM is working
   }
 
-  /** Helper method to check the selected feature columns are in the schema */
+  /** Helper method to check the selected feature columns are in the schema
+    * @throws IllegalArgumentException if the selected feature columns are not in the schema
+    */
   def checkFeatureColsInSchema(featureCols: Array[String]): Array[String] = {
     val allowedInputCols: Array[String] = ScalaReflection.schemaFor[MHealthUser].dataType match {
       case s: StructType => s.fieldNames.array
       case _ => Array[String]()
     }
-    if (allowedInputCols.contains(featureCols)) featureCols
-    else throw new IllegalArgumentException("Feature cols not in schema")
+    val result = featureCols.map(c => allowedInputCols.contains(c))
+    if (result.contains(false)) throw new IllegalArgumentException("Feature cols not in schema")
+    else featureCols
   }
 }

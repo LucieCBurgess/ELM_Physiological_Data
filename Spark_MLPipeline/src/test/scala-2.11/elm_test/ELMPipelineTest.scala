@@ -2,21 +2,20 @@ package elm_test
 
 import dev.data_load.{DataLoadOption, MHealthUser}
 import dev.elm.{ELMClassifier, ELMModel}
-import org.apache.spark.ml.linalg.{DenseVector, Vector}
-import org.apache.spark.ml.{Estimator, Pipeline, PipelineModel, PipelineStage}
+import org.apache.spark.ml.linalg.{Vector}
+import org.apache.spark.ml.{Pipeline, PipelineModel, PipelineStage}
 import org.apache.spark.ml.feature.{StringIndexer, VectorAssembler, VectorSlicer}
-import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.catalyst.ScalaReflection
 import org.apache.spark.sql.functions.{col, monotonically_increasing_id, when}
 import org.apache.spark.sql.types.StructType
-import org.apache.spark.sql.{DataFrame, Dataset, SparkSession}
+import org.apache.spark.sql.{DataFrame, SparkSession}
 import org.scalatest.FunSuite
-
 import scala.collection.mutable
 
 /**
   * Created by lucieburgess on 02/09/2017.
   * Tests for ELM Pipeline.
+  * ALL TESTS PASS. Use sbt "testOnly *ELMPipelineTest" to run the tests.
   */
 class ELMPipelineTest extends FunSuite {
 
@@ -97,7 +96,7 @@ class ELMPipelineTest extends FunSuite {
     intercept[IllegalArgumentException]{ checkFeatureColsInSchema(featureColsNotInSchema)}
   }
 
-  // This test is not working
+  /** Demonstrates that the sliced feature vector is the same as the features */
   test("[03] Can recreate features using Vector slicer") {
 
     val featureCols = Array("acc_Chest_X", "acc_Chest_Y", "acc_Chest_Z", "acc_Arm_X", "acc_Arm_Y", "acc_Arm_Z")
@@ -163,9 +162,8 @@ class ELMPipelineTest extends FunSuite {
     assert(trainData.count()+testData.count() === bigData.count())
   }
 
-  // This tes should throw an exception, need to check the API for catching one
-  // The exception will be from ELMParams ParamValidators.inRange - check this method to see what happens outside
-  test("[06] FracTest > 0.5 throws an exception") {
+  /** Intercepts exception caused by fracTest being out of range, greater than 0.5 */
+  test("[06] fracTest > 0.5 throws an exception") {
 
     val elmTest = new ELMClassifier()
       intercept[IllegalArgumentException] {
@@ -224,8 +222,4 @@ class ELMPipelineTest extends FunSuite {
     val testPredictions = elmTestModel.transform(dataWithFeatures) //instead of smallData
     assert(testPredictions.count() == dataWithFeatures.count()) //instead of smallData
   }
-
 }
-
-// sbt "testOnly *ELMPipelineTest"
-//val features: RDD[Vector] = dataWithFeatures.select("features").rdd.map(_.getAs[Vector]("features"))
