@@ -1,12 +1,14 @@
 package elm_test
 
-import dev.data_load.DataLoadOption
+import dev.data_load.{DataLoadOption, MHealthUser}
 import dev.elm.{ELMClassifier, ELMModel}
 import org.apache.spark.ml.linalg.{DenseVector, Vector}
 import org.apache.spark.ml.{Estimator, Pipeline, PipelineModel, PipelineStage}
 import org.apache.spark.ml.feature.{StringIndexer, VectorAssembler, VectorSlicer}
 import org.apache.spark.rdd.RDD
+import org.apache.spark.sql.catalyst.ScalaReflection
 import org.apache.spark.sql.functions.{col, monotonically_increasing_id, when}
+import org.apache.spark.sql.types.StructType
 import org.apache.spark.sql.{DataFrame, Dataset, SparkSession}
 import org.scalatest.FunSuite
 
@@ -68,26 +70,56 @@ class ELMPipelineTest extends FunSuite {
   }
 
   test("[02] checkAllowedInputCols checks that the features are correctly in the schema") {
-    ??? //Not yet implemented
+
+    val featureColsInSchema = Array("acc_Chest_X", "acc_Chest_Y", "acc_Chest_Z",
+      "ecg_1", "ecg_2",
+      "acc_Ankle_X", "acc_Ankle_Y", "acc_Ankle_Z",
+      "gyro_Ankle_X", "gyro_Ankle_Y", "gyro_Ankle_Z",
+      "magno_Ankle_X", "magno_Ankle_Y", "magno_Ankle_Z",
+      "acc_Arm_X","acc_Arm_Y", "acc_Arm_Z",
+      "gyro_Arm_X", "gyro_Arm_Y", "gyro_Arm_Z",
+      "magno_Arm_X", "magno_Arm_Y", "magno_Arm_Z",
+      "activityLabel")
+    val featureColsNotInSchema = Array("bla","acc","health")
+    def checkFeatureColsInSchema(featureCols: Array[String]): Array[String] = {
+      val allowedInputCols: Array[String] = ScalaReflection.schemaFor[MHealthUser].dataType match {
+        case s: StructType => s.fieldNames.array
+        case _ => Array[String]()
+      }
+      val result = featureCols.map(c => allowedInputCols.contains(c))
+      if (result.contains(false)) throw new IllegalArgumentException("Feature cols not in schema")
+      else featureCols
+    }
+    assert(checkFeatureColsInSchema(featureColsInSchema)(2).equals("acc_Chest_Z"))
+    assert(checkFeatureColsInSchema(featureColsInSchema)(4).equals("ecg_2"))
+    assert(checkFeatureColsInSchema(featureColsInSchema)(23).equals("activityLabel"))
+    assert(checkFeatureColsInSchema(featureColsInSchema).length == 24)
+    intercept[IllegalArgumentException]{ checkFeatureColsInSchema(featureColsNotInSchema)}
   }
 
+  // This test is not working
   test("[03] Can recreate features using Vector slicer") {
 
     val featureCols = Array("acc_Chest_X", "acc_Chest_Y", "acc_Chest_Z", "acc_Arm_X", "acc_Arm_Y", "acc_Arm_Z")
-    val featureColsIndex = featureCols.map(c => s"${c}_index")
 
-    val indexers = featureCols.map(
-      c => new StringIndexer().setInputCol(c).setOutputCol(s"${c}_index")
-    )
+    val assembler = new VectorAssembler().setInputCols(featureCols).setOutputCol("features")
+    val slicer = new VectorSlicer().setInputCol("features").setOutputCol("double_features").setNames(featureCols)
 
-    val assembler = new VectorAssembler().setInputCols(featureColsIndex).setOutputCol("features")
-    val slicer = new VectorSlicer().setInputCol("features").setOutputCol("double_features").setNames(featureColsIndex.init)
-    val transformedData = new Pipeline().setStages(indexers :+ assembler :+ slicer)
+    val slicedData = new Pipeline().setStages(Array(assembler,slicer))
       .fit(smallData)
       .transform(smallData)
+    slicedData.show(10)
 
-    // assert(slicer.getOutputCol.sameElements(assembler.getOutputCol)) Doesn't work
-    transformedData.show()
+    val dataWithFeatures = assembler.transform(smallData)
+
+    slicedData.select($"double_features").show
+    dataWithFeatures.select($"features").show
+
+    val array1 = dataWithFeatures.select("features").rdd.flatMap(r => r.getAs[Vector](0).toArray).collect
+    val array2 = slicedData.select("double_features").rdd.flatMap(r => r.getAs[Vector](0).toArray).collect
+
+    assert(array1.length == array2.length)
+    assert(array1.sum == array2.sum)
   }
 
   test("[04] Creating ELM returns Classifier of the correct type and parameters") {
@@ -122,7 +154,7 @@ class ELMPipelineTest extends FunSuite {
       .setLabelCol("binaryLabel")
       .setHiddenNodes(10)
       .setActivationFunc("sigmoid")
-      .setFracTest(0.6)
+      .setFracTest(0.45)
 
     val train: Double = 1 - elmTest.getFracTest
     val test: Double = elmTest.getFracTest
@@ -131,40 +163,69 @@ class ELMPipelineTest extends FunSuite {
     assert(trainData.count()+testData.count() === bigData.count())
   }
 
-  test("[06] pipeline calls behave as expected and return data structures of the correct size") {
+  // This tes should throw an exception, need to check the API for catching one
+  // The exception will be from ELMParams ParamValidators.inRange - check this method to see what happens outside
+  test("[06] FracTest > 0.5 throws an exception") {
+
+    val elmTest = new ELMClassifier()
+      intercept[IllegalArgumentException] {
+        elmTest.setFracTest(0.6)
+      }
+  }
+
+  test("[07] FracTest < 0.5 does not thrown an exception") {
+
+    val elmTest = new ELMClassifier()
+    intercept[IllegalArgumentException] {
+      elmTest.setFracTest(0.6)
+    }
+  }
+
+  /** This test can be run on smallData only. Running on bigData requires a Spark config to be set on the command line
+    * before the JVM is created on the driver
+    * There is a bug in PipelineStages or Pipeline API which means it is not picking up the "features" column on line 215
+    * in the call Pipeline.fit(smallData).
+    * Therefore we have to take the VectorAssembler out of the pipeline and add the features column manually.
+    * This is a problem with the API, not with my code. The commented lines show what should be there if the Classifier API
+    * was working correctly with the VectorAssembler API.
+    */
+  test("[08] pipeline calls behave as expected and return data structures of the correct size") {
 
     val pipelineStages = new mutable.ArrayBuffer[PipelineStage]()
     assert(pipelineStages.isEmpty)
 
     val featureCols = Array("acc_Chest_X", "acc_Chest_Y", "acc_Chest_Z", "acc_Arm_X", "acc_Arm_Y", "acc_Arm_Z")
     val featureAssembler = new VectorAssembler().setInputCols(featureCols).setOutputCol("features")
-    val dataWithFeatures = featureAssembler.transform(bigData)
+    //pipelineStages += featureAssembler
+
+    val dataWithFeatures = featureAssembler.transform(smallData)
 
     val elmTest = new ELMClassifier()
       .setFeaturesCol("features")
       .setLabelCol("binaryLabel")
       .setHiddenNodes(10)
       .setActivationFunc("sigmoid")
-      .setFracTest(0.6)
+      .setFracTest(0.4)
 
     pipelineStages += elmTest
-    assert(pipelineStages.size === 1)
+    assert(pipelineStages.size == 1)
 
     val pipelineTest: Pipeline = new Pipeline().setStages(pipelineStages.toArray)
-    assert(pipelineTest.getStages.length === 1)
+    assert(pipelineTest.getStages.length == 1)
+    //assert(pipelineTest.getStages.head.isInstanceOf[VectorAssembler])
     assert(pipelineTest.getStages.head.isInstanceOf[ELMClassifier])
 
-    val pipelineTestModel: PipelineModel = pipelineTest.fit(smallData)
+    val pipelineTestModel: PipelineModel = pipelineTest.fit(dataWithFeatures)
     assert(pipelineTestModel.stages.last.isInstanceOf[ELMModel])
 
     val elmTestModel = pipelineTestModel.stages.last.asInstanceOf[ELMModel]
     assert(elmTestModel.isInstanceOf[ELMModel])
 
-    val testPredictions = elmTestModel.transform(dataWithFeatures)
-    assert(testPredictions.count() == dataWithFeatures.count())
+    val testPredictions = elmTestModel.transform(dataWithFeatures) //instead of smallData
+    assert(testPredictions.count() == dataWithFeatures.count()) //instead of smallData
   }
 
 }
 
-//val features: RDD[Vector] = dataWithFeatures.select("features").rdd.map(_.getAs[Vector]("features"))
 // sbt "testOnly *ELMPipelineTest"
+//val features: RDD[Vector] = dataWithFeatures.select("features").rdd.map(_.getAs[Vector]("features"))
