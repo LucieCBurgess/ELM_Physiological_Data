@@ -10,10 +10,14 @@ package data_load_test
 
 import dev.data_load.{DataLoadOption, MHealthUser}
 import org.apache.spark.sql.functions._
-import org.apache.spark.sql.{DataFrame, Dataset}
+import org.apache.spark.sql.{DataFrame, Dataset, SparkSession}
 import org.scalatest.FunSuite
 
-class GlobalTempViewTest extends FunSuite with SparkSessionDataLoadTestWrapper {
+class GlobalTempViewTest extends FunSuite {
+
+  val spark: SparkSession = {
+    SparkSession.builder().master("local[4]").appName("GlobalTempViewTest").getOrCreate()
+  }
 
   import spark.implicits._
 

@@ -2,7 +2,7 @@ package data_load_test
 
 import dev.data_load.{DataLoadOption, DataLoadWTF}
 import org.apache.spark.rdd.RDD
-import org.apache.spark.sql.DataFrame
+import org.apache.spark.sql.{DataFrame, SparkSession}
 import org.scalatest.FunSuite
 
 /**
@@ -11,8 +11,11 @@ import org.scalatest.FunSuite
   * Tests for 3 and 10 files.
   * ALL TESTS PASS
   */
-class DataLoadWTFTest extends FunSuite with SparkSessionDataLoadTestWrapper {
+class DataLoadWTFTest extends FunSuite {
 
+    val spark: SparkSession = {
+      SparkSession.builder().master("local[4]").appName("DataLoad_wholeTextFile_testing").getOrCreate()
+    }
 
     test("[01] Loading data from three files results in single file of correct size") {
 

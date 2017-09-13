@@ -12,15 +12,10 @@ import org.scalatest.{BeforeAndAfterEach, FunSuite}
 
 case class Person(name: String, age: Int)
 
-class DataLoadExampleTest extends FunSuite with BeforeAndAfterEach {
+class DataLoadExampleTest extends FunSuite {
 
-  private val master = "local[*]"
-  private val appName = "data_load_testing"
-
-  var spark: SparkSession = _
-
-  override def beforeEach() {
-    spark = new SparkSession.Builder().appName(appName).master(master).getOrCreate()
+  val spark: SparkSession = {
+    SparkSession.builder().master("local[4]").appName("DataLoadExampleTest").getOrCreate()
   }
 
   test("[01] Creating Dataframe should produce Dataframe of correct size") {
@@ -42,10 +37,6 @@ class DataLoadExampleTest extends FunSuite with BeforeAndAfterEach {
       df.take(1)(1)(0) // because df.take(1) takes the first row, therefore the index of (1,0) is not accessible
     }
     assert(df.filter($"age" > 21).count() == 2)
-  }
-
-  override def afterEach() = {
-    spark.stop()
   }
 }
 

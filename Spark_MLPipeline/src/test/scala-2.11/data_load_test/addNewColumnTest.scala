@@ -9,12 +9,16 @@ package data_load_test
   */
 
 import dev.data_load.DataLoadOption
-import org.apache.spark.sql.{Column, DataFrame}
+import org.apache.spark.sql.{Column, DataFrame, SparkSession}
 import org.scalatest.FunSuite
 import org.apache.spark.sql.functions._
 
 
-class AddNewColumnTest extends FunSuite with SparkSessionDataLoadTestWrapper {
+class AddNewColumnTest extends FunSuite {
+
+  val spark: SparkSession = {
+    SparkSession.builder().master("local[4]").appName("AddNewColumnTest_testing").getOrCreate()
+  }
 
   import spark.implicits._
 

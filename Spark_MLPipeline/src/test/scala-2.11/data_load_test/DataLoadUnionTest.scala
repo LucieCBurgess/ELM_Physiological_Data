@@ -7,11 +7,15 @@ package data_load_test
   * ALL TESTS PASS
   */
 
-import dev.data_load.{DataLoadOption, DataLoad}
-import org.apache.spark.sql.DataFrame
+import dev.data_load.{DataLoad, DataLoadOption}
+import org.apache.spark.sql.{DataFrame, SparkSession}
 import org.scalatest.FunSuite
 
-class DataLoadUnionTest extends FunSuite with SparkSessionDataLoadTestWrapper {
+class DataLoadUnionTest extends FunSuite {
+
+  val spark: SparkSession = {
+    SparkSession.builder().master("local[4]").appName("DataLoadUnion_testing").getOrCreate()
+  }
 
   import spark.implicits._
 
