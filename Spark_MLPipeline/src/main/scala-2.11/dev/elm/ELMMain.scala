@@ -1,6 +1,7 @@
 package dev.elm
 
 import dev.logreg.{LRParams, LRPipeline}
+import org.apache.spark
 import org.apache.spark.sql.SparkSession
 
 /**
@@ -20,10 +21,7 @@ object ELMMain {
 
       head("ELM parameters")
 
-      opt[String]("dataFormat").text(s"Please enter the dataformat here, default: ${defaultParams.dataFormat}")
-        .action((x, c) => c.copy(dataFormat = x))
-
-      opt[String]("Activation function").text(s"Sets the Activation Function which modifies the hidden layer output matrix, default: ${defaultParams.activationFunc}")
+      opt[String]("activationFunc").text(s"Sets the Activation Function which modifies the hidden layer output matrix, default: ${defaultParams.activationFunc}")
         .action((x, c) => c.copy(activationFunc = x))
 
       opt[Int]("hiddenNodes").text(s"Sets the number of hidden nodes in the hidden layer, default: ${defaultParams.hiddenNodes}")
@@ -33,7 +31,7 @@ object ELMMain {
         .action((x, c) => c.copy(fracTest = x))
 
       checkConfig { params =>
-        if (params.fracTest < 0 || params.fracTest >= 1) {
+        if (params.fracTest < 0.1 || params.fracTest >= 0.6) {
           failure(s"fracTest ${params.fracTest} value is incorrect; it should be in range [0,1).")
         } else {
           success
@@ -42,12 +40,10 @@ object ELMMain {
 
     }
 
-    //FIXME - not sure how to use ELMParams instead of DefaultELMParams?
     parser.parse(args, defaultParams) match {
       //case Some(params) => ELMPipeline.run(params) - not yet implemented
       case Some(params) => println(s"ELM params \n$params")
       case _ => sys.exit(1)
     }
   }
-  //spark.stop()
 }

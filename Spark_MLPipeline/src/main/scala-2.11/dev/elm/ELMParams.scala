@@ -6,8 +6,6 @@ import org.apache.spark.sql.catalyst.ScalaReflection
 import org.apache.spark.sql.types.{StructField,StructType}
 import org.apache.spark.mllib.linalg.VectorUDT
 
-//FIXME need to understand better how this interacts with the Scopt params version
-
 /**
   * Created by lucieburgess on 27/08/2017.
   * See https://github.com/apache/spark/blob/master/examples/src/main/scala/org/apache/spark/examples/ml/DeveloperApiExample.scala
@@ -31,14 +29,13 @@ import org.apache.spark.mllib.linalg.VectorUDT
 trait ELMParams extends Params {
 
   /** Defines and sets the activation function parameter and uses the ParamValidators factory methods class to check configuration */
-  val activationFuncs: Array[String] = Array("sigmoid","tanh") // NB all lower case
+  val activationFuncs: Array[String] = Array("sigmoid","tanh","sin","step") // NB all lower case
   val activationFunc: Param[String] =
     new Param[String](this,"activationFunc", s"The activation function which sets modifies the hidden layer output, " +
-      s"available activation functions: sigmoid, tanh", ParamValidators.inArray(activationFuncs))
+      s"available activation functions: sigmoid, tanh, sin, step", ParamValidators.inArray(activationFuncs))
     def getActivationFunc: String = $(activationFunc)
 
   /** Parameter for the number of hidden nodes in the ELM */
-    //FIXME - have no idea if 200 is a reasonable number of hidden nodes, need to check with cross validation
   val hiddenNodes: IntParam =
     new IntParam(this, "hiddenNodes", "number of hidden nodes in the ELM", ParamValidators.inRange(10.0,200.0))
     def getHiddenNodes: Int = $(hiddenNodes)

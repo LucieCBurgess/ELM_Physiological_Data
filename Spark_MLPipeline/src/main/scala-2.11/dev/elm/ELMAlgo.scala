@@ -1,8 +1,9 @@
 package dev.elm
 
+import breeze.generic.{MappingUFunc, UFunc}
 import breeze.linalg.{*, pinv, DenseMatrix => BDM, DenseVector => BDV}
 import org.apache.spark.ml.linalg.Vector
-import breeze.numerics.sigmoid
+import breeze.numerics._
 import org.apache.spark.sql.Dataset
 
 /**
@@ -24,7 +25,7 @@ sealed class ELMAlgo(val ds: Dataset[_], hiddenNodes: Int, af: String) {
   val algoNumFeatures: Int = ds.select("features").head.get(0).asInstanceOf[Vector].size
 
   //FIXME - not currently used, as using the sigmoid and tanh built in Breeze functions.
-  val chosenAF = new ActivationFunction(af) //activation function, set in ELMClassifier
+  //val chosenAF = new ActivationFunction(af) //activation function, set in ELMClassifier
 
   private val N: Int = ds.count().toInt
 
@@ -42,7 +43,7 @@ sealed class ELMAlgo(val ds: Dataset[_], hiddenNodes: Int, af: String) {
   val weights: BDM[Double] = BDM.rand[Double](L, algoNumFeatures)
 
   /** Step 5: randomly assign bias column vector of length L */
-  val bias :BDV[Double] = BDV.rand[Double](L)
+  val bias: BDV[Double] = BDV.rand[Double](L)
 
   /**
     * Step 6: Calculate the output weight vector beta of length L where L is the number of hidden nodes
@@ -52,7 +53,15 @@ sealed class ELMAlgo(val ds: Dataset[_], hiddenNodes: Int, af: String) {
 
     val M: BDM[Double] = weights * X //L x numFeatures. numFeatures x N = L x N
 
-    val H: BDM[Double] = sigmoid((M(::,*) + bias).t) //N x L
+    def calculateH(af: String): BDM[Double] = af match {
+      case "sigmoid" => sigmoid((M(::, *) + bias).t)
+      case "tanh" => tanh((M(::, *) + bias).t)
+      case "sin" => sin((M(::, *) + bias).t)
+      //case "step" => step((M(::, *) + bias).t)
+      case _ => throw new IllegalArgumentException("Activation function must be sigmoid, tanh, sin or step")
+    }
+
+    val H = calculateH(af)
 
     val beta: BDV[Double] = pinv(H) * T // Vector of length L
     beta
@@ -60,21 +69,23 @@ sealed class ELMAlgo(val ds: Dataset[_], hiddenNodes: Int, af: String) {
 
   /**
     * Helper function to select features from a Spark dataset and return as a Breeze Dense Matrix. This allows pinv to be used
+    *
     * @param ds the dataset being operated on, used in the ELMClassifier class
     * @return X, a BreezeDenseMatrix of the dataset feature values, to be used in the ELM algorithm above
     * NB. This gives a matrix in column major order and because the features are organised as vectors in each element
-    * of the features column, we need to swap rows and columns. Therefore X has numFeatures rows and N(number of training samples)
+    *         of the features column, we need to swap rows and columns. Therefore X has numFeatures rows and N(number of training samples)
     * columns. This effectively gives a amtrix which is transpose to the matrix we want. However the algorithm
-    * requires us to transpose it, so we avoid that step and simply use the extracted version.
+    *         requires us to transpose it, so we avoid that step and simply use the extracted version.
     */
   private def extractFeaturesMatrix(ds: Dataset[_]): BDM[Double] = {
 
     val array = ds.select("features").rdd.flatMap(r => r.getAs[Vector](0).toArray).collect
-    new BDM[Double](algoNumFeatures,N,array)
+    new BDM[Double](algoNumFeatures, N, array)
   }
 
   /**
     * Helper function to select labelCol from a Spark dataset and return it as a Breeze Dense Vector. This allows pinv to be used
+    *
     * @param ds the dataset being operated on, used in the ELMClassifier class
     * @return T, a BreezeDenseVector of the dataset label values, to be used in the ELM algorithm above
     */
@@ -84,3 +95,9 @@ sealed class ELMAlgo(val ds: Dataset[_], hiddenNodes: Int, af: String) {
     new BDV[Double](array)
   }
 }
+
+  object step extends UFunc with MappingUFunc {
+    implicit object stepImplDouble extends Impl[Double, Double] {
+      def apply(x: Double) = if (x >= 0.5) 1.0 else 0.0
+    }
+  }

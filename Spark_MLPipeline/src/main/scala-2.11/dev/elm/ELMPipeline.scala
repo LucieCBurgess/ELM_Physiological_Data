@@ -67,7 +67,7 @@ object ELMPipeline {
       .setFeaturesCol("features")
       .setLabelCol("binaryLabel")
       .setHiddenNodes(10)
-      .setActivationFunc("sigmoid")
+      .setActivationFunc("sigmoid") //was sigmoid
       .setFracTest(0.5)
 
     pipelineStages += elm
