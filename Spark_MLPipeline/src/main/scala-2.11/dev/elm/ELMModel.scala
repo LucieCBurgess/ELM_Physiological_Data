@@ -26,10 +26,10 @@ import org.apache.spark.sql.types._
   * the maximum value returned by [[predictRaw()]], as stated in the Classifier Model API.
   *
   */
-class ELMModel(override val uid: String, val modelWeights: BDM[Double], val modelBias: BDV[Double], val modelBeta: BDV[Double],
+class ELMModel(val uid: String, val modelWeights: BDM[Double], val modelBias: BDV[Double], val modelBeta: BDV[Double],
                val modelHiddenNodes: Int, val modelAF: String, val modelNumFeatures: Int)
   extends ClassificationModel[Vector, ELMModel]
-    with ELMParams with DefaultParamsWritable {
+    with ELMParams with DefaultParamsWritable { //val uid or override val uid?
 
   /**
     * Implements value in API class ml.Model
@@ -46,6 +46,8 @@ class ELMModel(override val uid: String, val modelWeights: BDM[Double], val mode
     */
   override val numClasses: Int = 2
 
+  override def numFeatures: Int = modelNumFeatures //PredictionModel sets numFeatures default as -1 (unknown)
+
   //val inputColName = "features"
   //val outputColName = "prediction"
 
@@ -58,6 +60,8 @@ class ELMModel(override val uid: String, val modelWeights: BDM[Double], val mode
     *         selects the predicted labels. raw2prediction can be overridden to support thresholds which favour particular labels.
     */
   override def predictRaw(features: Vector) :Vector = {
+
+      println(s"The number of features in ELMModel predictRaw is $modelNumFeatures")
 
       val featuresArray = features.toArray
       val featuresMatrix = new BDM[Double](modelNumFeatures, 1, featuresArray) //numFeatures x 1

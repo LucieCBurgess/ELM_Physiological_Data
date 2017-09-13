@@ -20,8 +20,9 @@ sealed class ELMAlgo(val ds: Dataset[_], hiddenNodes: Int, af: String) { // prev
   import ds.sparkSession.implicits._
 
   /** Step 1: calculate main variables used in the model */
-  val numFeatures: Int = ds.select("features").head.get(0).asInstanceOf[Vector].size
-  println(s"The number of features is $numFeatures")
+  val algoNumFeatures: Int = ds.select("features").head.get(0).asInstanceOf[Vector].size
+  println(s"The number of features in ELMAlgo is $algoNumFeatures")
+  println(s"The number of features in ELMAlgo is ${this.algoNumFeatures}")
 
   //FIXME - not currently used, as using the sigmoid and tanh built in Breeze functions.
   val chosenAF = new ActivationFunction(af) //activation function, set in ELMClassifier
@@ -42,7 +43,7 @@ sealed class ELMAlgo(val ds: Dataset[_], hiddenNodes: Int, af: String) { // prev
 
 
   /** Step 4: randomly assign input weight matrix of size (L, numFeatures) */
-  val weights: BDM[Double] = BDM.rand[Double](L, numFeatures) // L x numFeatures
+  val weights: BDM[Double] = BDM.rand[Double](L, algoNumFeatures) // L x numFeatures
   println(s"*************** The number of rows for weights is ${weights.rows} *****************")
   println(s"*************** The number of coumns for weights is ${weights.cols} *****************")
 
@@ -84,8 +85,8 @@ sealed class ELMAlgo(val ds: Dataset[_], hiddenNodes: Int, af: String) { // prev
   private def extractFeaturesMatrix(ds: Dataset[_]): BDM[Double] = {
 
     val array = ds.select("features").rdd.flatMap(r => r.getAs[Vector](0).toArray).collect
-    println(s"The size of the features matrix is $numFeatures rows, $N cols ***********")
-    new BDM[Double](numFeatures,N,array)
+    println(s"The size of the features matrix is $algoNumFeatures rows, $N cols ***********")
+    new BDM[Double](algoNumFeatures,N,array)
   }
 
   /**

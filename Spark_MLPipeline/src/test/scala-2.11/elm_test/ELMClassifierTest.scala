@@ -1,9 +1,10 @@
 package elm_test
 
+import breeze.linalg.{DenseMatrix => BDM, DenseVector => BDV}
 import dev.data_load.DataLoadOption
-import dev.elm.{ELMClassifier, ELMParams}
+import dev.elm.{ELMClassifier, ELMModel}
 import org.apache.spark.ml.feature.VectorAssembler
-import org.apache.spark.ml.param.{Param, ParamMap, ParamValidators}
+import org.apache.spark.ml.param.{Param, ParamMap}
 import org.apache.spark.sql.{DataFrame, SparkSession}
 import org.apache.spark.sql.functions.{monotonically_increasing_id, when}
 import org.scalatest.FunSuite
@@ -32,6 +33,8 @@ class ELMClassifierTest extends FunSuite {
   }
 
   val featureCols: Array[String] = Array("acc_Chest_X", "acc_Chest_Y", "acc_Chest_Z")
+  val numFeatures: Int = featureCols.length
+  println(s"The number of features calculated from the array featureCols is $numFeatures")
   val featureAssembler: VectorAssembler = new VectorAssembler().setInputCols(featureCols).setOutputCol("features")
   val dataWithFeatures: DataFrame = featureAssembler.transform(smallData)
 
@@ -68,14 +71,53 @@ class ELMClassifierTest extends FunSuite {
       .setFracTest(0.5)
 
     val params: ParamMap = testELM.extractParamMap()
+    println(params.toSeq.toString())
+
+    // Extra param is not defined in ELMParams so copying it does not work
     val extraParam: Param[String] = new Param[String](testELM, "anotherParam", s"another Param for testing purposes")
-    val params2 = params.put(extraParam, extraParam.name)
+    val params2: ParamMap = new ParamMap().put(extraParam, extraParam.name)
+    println(params2.toSeq.toString())
 
-    val testELM2 = testELM.copy(params2)
-
+    // Copying the embedded params
+    val testELM2 = testELM.copy(params)
     println(testELM2.extractParamMap().toSeq.toString())
 
     assert(testELM2.isInstanceOf[ELMClassifier])
-    //assert(testELM2.hasParam("anotherParam"))
+    assert(testELM2.hasParam("featuresCol"))
+    assert(testELM2.hasParam("labelCol"))
+    assert(testELM2.hasParam("hiddenNodes"))
+    assert(testELM2.hasParam("activationFunc"))
+    assert(testELM2.hasParam("fracTest"))
+    assert(testELM2.hasParam("predictionCol"))
+    assert(testELM2.hasParam("rawPredictionCol"))
   }
+
+  test("[04] Calling train with parameters and calling ELMAlgo results in ELMModel with correct parameters") {
+
+    val testELM = new ELMClassifier()
+      .setFeaturesCol("features")
+      .setLabelCol("binaryLabel")
+      .setHiddenNodes(10)
+      .setActivationFunc("sigmoid")
+      .setFracTest(0.5)
+
+    val testELMModel: ELMModel = testELM.fit(dataWithFeatures)
+
+    assert(testELMModel.isInstanceOf[ELMModel])
+    assert(testELMModel.uid.equals(testELM.uid))
+    assert(testELMModel.getFracTest == 0.5)
+    assert(testELMModel.getHiddenNodes == 10)
+    assert(testELMModel.getActivationFunc == "sigmoid")
+    assert(testELMModel.getFeaturesCol == "features")
+    assert(testELMModel.getLabelCol == "binaryLabel")
+    assert(testELMModel.getPredictionCol == "prediction")
+    assert(testELMModel.getRawPredictionCol == "rawPrediction")
+    println(s"testELMModel.modelNumFeatures is ${testELMModel.modelNumFeatures}")
+    println(s"testELMModel.numFeatures is ${testELMModel.numFeatures}")
+    assert(testELMModel.modelWeights.isInstanceOf[BDM[Double]])
+    assert(testELMModel.modelBias.isInstanceOf[BDV[Double]])
+    assert(testELMModel.modelBeta.isInstanceOf[BDV[Double]])
+
+  }
+
 }

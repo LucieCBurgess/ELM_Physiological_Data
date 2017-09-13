@@ -264,7 +264,7 @@ class ELMAlgoTest extends FunSuite {
 
   }
 
-  test("[09] Can calculate H from weights, bias and X (features) using bias vector and Breeze column forecasting") {
+  test("[09] Can calculate H from weights, bias and X (features) using bias vector and Breeze column broadcasting") {
 
     def extractFeaturesMatrix(ds: Dataset[_]): BDM[Double] = {
       val array = ds.select("features").rdd.flatMap(r => r.getAs[Vector](0).toArray).collect

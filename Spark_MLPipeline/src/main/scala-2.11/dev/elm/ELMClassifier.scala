@@ -41,17 +41,18 @@ class ELMClassifier(val uid: String) extends Classifier[Vector, ELMClassifier, E
     ds.cache()
     ds.printSchema()
 
-    val numClasses = getNumClasses(ds)
+    val numClasses: Int = getNumClasses(ds)
     println(s"This is a binomial classifier and the number of classes should be 2: it is $numClasses")
 
     val modelHiddenNodes: Int = getHiddenNodes
     val modelAF: String = getActivationFunc
 
-    val eLMClassifierAlgo = new ELMAlgo(ds, modelHiddenNodes, modelAF)
-    val modelWeights: BDM[Double] = eLMClassifierAlgo.weights
-    val modelBias: BDV[Double] = eLMClassifierAlgo.bias
-    val modelBeta: BDV[Double] = eLMClassifierAlgo.calculateBeta()
-    val modelNumFeatures: Int = eLMClassifierAlgo.numFeatures
+    val elmAlgo = new ELMAlgo(ds, modelHiddenNodes, modelAF)
+    val modelWeights: BDM[Double] = elmAlgo.weights
+    val modelBias: BDV[Double] = elmAlgo.bias
+    val modelBeta: BDV[Double] = elmAlgo.calculateBeta()
+    val modelNumFeatures: Int = elmAlgo.algoNumFeatures
+    println(s"******* model num features in train in ELM Classifier is $modelNumFeatures *********")
 
     /** Return the trained model */
     val model = new ELMModel(uid, modelWeights, modelBias, modelBeta, modelHiddenNodes, modelAF, modelNumFeatures).setParent(this)
