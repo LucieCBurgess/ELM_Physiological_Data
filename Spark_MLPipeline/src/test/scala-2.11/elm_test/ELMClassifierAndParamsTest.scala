@@ -11,9 +11,10 @@ import org.scalatest.FunSuite
 
 /**
   * Created by lucieburgess on 12/09/2017.
-  * Tests to check logic and methods for ELMClassifier class.
+  * Tests to check logic and methods for ELMClassifier class, and ELMParams.
+  * ALL TESTS PASS 13/09/2017
   */
-class ELMClassifierTest extends FunSuite {
+class ELMClassifierAndParamsTest extends FunSuite {
 
   val spark: SparkSession = {
     SparkSession.builder().master("local[4]").appName("ELMPipelineTest").getOrCreate()
@@ -33,8 +34,8 @@ class ELMClassifierTest extends FunSuite {
   }
 
   val featureCols: Array[String] = Array("acc_Chest_X", "acc_Chest_Y", "acc_Chest_Z")
-  val numFeatures: Int = featureCols.length
-  println(s"The number of features calculated from the array featureCols is $numFeatures")
+  val testNumFeatures: Int = featureCols.length
+  println(s"The number of features calculated from the array featureCols is $testNumFeatures")
   val featureAssembler: VectorAssembler = new VectorAssembler().setInputCols(featureCols).setOutputCol("features")
   val dataWithFeatures: DataFrame = featureAssembler.transform(smallData)
 
@@ -92,6 +93,10 @@ class ELMClassifierTest extends FunSuite {
     assert(testELM2.hasParam("rawPredictionCol"))
   }
 
+  /** Checks that calling testELM.fit returns an ELMModel with the correct parameters
+    * Note the difference between numFeatures and modelNumFeatures. numFeatures is defined in Predictor and overridden
+    * in ELMModel to be consistent with modelNumFeatures. Otherwise Predictor sets the default to -1
+    */
   test("[04] Calling train with parameters and calling ELMAlgo results in ELMModel with correct parameters") {
 
     val testELM = new ELMClassifier()
@@ -112,12 +117,25 @@ class ELMClassifierTest extends FunSuite {
     assert(testELMModel.getLabelCol == "binaryLabel")
     assert(testELMModel.getPredictionCol == "prediction")
     assert(testELMModel.getRawPredictionCol == "rawPrediction")
-    println(s"testELMModel.modelNumFeatures is ${testELMModel.modelNumFeatures}")
-    println(s"testELMModel.numFeatures is ${testELMModel.numFeatures}")
+    assert(testELMModel.numFeatures == testNumFeatures)
+    assert(testELMModel.modelNumFeatures == testNumFeatures)
     assert(testELMModel.modelWeights.isInstanceOf[BDM[Double]])
     assert(testELMModel.modelBias.isInstanceOf[BDV[Double]])
     assert(testELMModel.modelBeta.isInstanceOf[BDV[Double]])
 
-  }
+    assert(testELMModel.numClasses == 2)
 
+    val modelParams = testELMModel.extractParamMap()
+    val testELMModel2 = testELMModel.copy(modelParams)
+
+    assert(testELMModel2.isInstanceOf[ELMModel])
+    assert(testELMModel2.hasParam("featuresCol"))
+    assert(testELMModel2.hasParam("labelCol"))
+    assert(testELMModel2.hasParam("hiddenNodes"))
+    assert(testELMModel2.hasParam("activationFunc"))
+    assert(testELMModel2.hasParam("fracTest"))
+    assert(testELMModel2.hasParam("predictionCol"))
+    assert(testELMModel2.hasParam("rawPredictionCol"))
+
+  }
 }

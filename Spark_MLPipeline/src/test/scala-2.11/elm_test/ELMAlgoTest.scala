@@ -85,6 +85,8 @@ class ELMAlgoTest extends FunSuite {
   /** Test for construction of the features matrix - checks that the BDM is of the correct size
     * This is needed because extracting the feature vector into an array from an RDD and into a BDM
     * of column-major order effectively transposes the matrix
+    * In other words, we have to transpose the number of rows and columns of the features vector
+    * and then transpose the resulting matrix, to get the matrix we want
     */
   test("[03] Computing X (features matrix) results in a matrix of correct cardinality") {
 
@@ -145,9 +147,6 @@ class ELMAlgoTest extends FunSuite {
     assert(Z(2,2) === 3.0)
     assert(Z(3,2) === 3.0)
     assert(Z(4,2) === 3.0)
-
-    // In other words, when getting the features vector we have to transpose the number of rows and columns,
-    // and then transpose the whole matrix, to get the matrix we want
   }
 
   test("[04] Check size of the dataset is 35,174 lines for mHealth_subject1.txt and 22 lines for smalltest") {
@@ -209,7 +208,10 @@ class ELMAlgoTest extends FunSuite {
     assert(Y.isInstanceOf[BDM[Double]])
   }
 
-  /** Only try this for smalltest. It fails for large files due to pinv */
+  /** Only try this for smalltest. It fails for large files due to pinv
+    * Not used in the model as Breeze allows column forecasting. This method works by calculating bias as a
+    * matrix instead of a vector - useful method for when using Spark matrices as they do not have the
+    * broadcast functionality */
   test("[08] Can calculate H from weights, bias and X (features) using bias matrix and ListBuffer") {
 
     def extractFeaturesMatrix(ds: Dataset[_]): BDM[Double] = {
@@ -223,7 +225,7 @@ class ELMAlgoTest extends FunSuite {
     }
 
     val L = 10
-    val bias: BDM[Double] = BDM.rand[Double](L,1) // L x 1 SHOULD be L x N with each column being the same
+    val bias: BDM[Double] = BDM.rand[Double](L,1) // L x 1
     val weights: BDM[Double] = BDM.rand[Double](L, numFeatures) // L x numFeatures
     val X: BDM[Double] = extractFeaturesMatrix(smallDF) // numFeatures x N
     assert(X.rows == 3)
@@ -247,7 +249,8 @@ class ELMAlgoTest extends FunSuite {
       for (i <- 0 until smallN) yield buf += biasArray
     val replicatedBiasArray = buf.flatten.toArray
 
-    val bias2 :BDM[Double] = new BDM[Double](smallN,L,replicatedBiasArray) // bias is N x L, but the same column vector (length L) repeated N times
+    // bias is N x L, but the same column vector (length L) repeated N times
+    val bias2 :BDM[Double] = new BDM[Double](smallN,L,replicatedBiasArray)
 
     val H = sigmoid(M + bias2) // We want H to be N x L
 
@@ -304,7 +307,6 @@ class ELMAlgoTest extends FunSuite {
     assert(beta.length == 10)
 
   }
-  //Do not include spark.stop() here. It prevents the tests from running
 }
 
 

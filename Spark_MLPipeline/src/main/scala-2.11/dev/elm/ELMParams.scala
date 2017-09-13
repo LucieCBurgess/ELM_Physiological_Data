@@ -34,7 +34,7 @@ trait ELMParams extends Params {
   val activationFuncs: Array[String] = Array("sigmoid","tanh") // NB all lower case
   val activationFunc: Param[String] =
     new Param[String](this,"activationFunc", s"The activation function which sets modifies the hidden layer output, " +
-      s"available activation functions: ${activationFuncs}.toString", ParamValidators.inArray(activationFuncs))
+      s"available activation functions: sigmoid, tanh", ParamValidators.inArray(activationFuncs))
     def getActivationFunc: String = $(activationFunc)
 
   /** Parameter for the number of hidden nodes in the ELM */
@@ -43,8 +43,10 @@ trait ELMParams extends Params {
     new IntParam(this, "hiddenNodes", "number of hidden nodes in the ELM", ParamValidators.inRange(10.0,200.0))
     def getHiddenNodes: Int = $(hiddenNodes)
 
-  /** Parameter to set the fraction of the dataset to be held out for testing. Can be in range 10% - 50%
+  /**
+    * Parameter to set the fraction of the dataset to be held out for testing. Can be in range 10% - 50%
     * At least 50% must be used to train the model
+    * @throws IllegalArgumentException if fracTest is <0.10 or >0.50
     */
   val fracTest: DoubleParam =
     new DoubleParam(this, "fracTest", "Fraction of data to be held out for testing", ParamValidators.inRange(0.10, 0.50))

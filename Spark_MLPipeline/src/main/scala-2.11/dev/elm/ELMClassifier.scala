@@ -16,7 +16,7 @@ import breeze.linalg.{DenseVector => BDV, DenseMatrix => BDM}
 class ELMClassifier(val uid: String) extends Classifier[Vector, ELMClassifier, ELMModel]
   with ELMParams with DefaultParamsWritable {
 
-  def this() = this(Identifiable.randomUID("ELM Estimator algorithm which includes train() method"))
+  def this() = this(Identifiable.randomUID("ELM Estimator algorithm"))
 
   override def copy(extra: ParamMap): ELMClassifier = defaultCopy(extra)
 
@@ -42,7 +42,7 @@ class ELMClassifier(val uid: String) extends Classifier[Vector, ELMClassifier, E
     ds.printSchema()
 
     val numClasses: Int = getNumClasses(ds)
-    println(s"This is a binomial classifier and the number of classes should be 2: it is $numClasses")
+    println(s"This is a binomial classifier and the number of classes is $numClasses")
 
     val modelHiddenNodes: Int = getHiddenNodes
     val modelAF: String = getActivationFunc
@@ -52,7 +52,6 @@ class ELMClassifier(val uid: String) extends Classifier[Vector, ELMClassifier, E
     val modelBias: BDV[Double] = elmAlgo.bias
     val modelBeta: BDV[Double] = elmAlgo.calculateBeta()
     val modelNumFeatures: Int = elmAlgo.algoNumFeatures
-    println(s"******* model num features in train in ELM Classifier is $modelNumFeatures *********")
 
     /** Return the trained model */
     val model = new ELMModel(uid, modelWeights, modelBias, modelBeta, modelHiddenNodes, modelAF, modelNumFeatures).setParent(this)

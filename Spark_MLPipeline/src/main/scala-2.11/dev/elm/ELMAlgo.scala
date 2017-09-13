@@ -1,55 +1,48 @@
 package dev.elm
 
 import breeze.linalg.{*, pinv, DenseMatrix => BDM, DenseVector => BDV}
-import org.apache.spark.ml.linalg.{Vector, DenseVector => SDV}
+import org.apache.spark.ml.linalg.Vector
 import breeze.numerics.sigmoid
-import org.apache.spark.sql.functions.col
 import org.apache.spark.sql.Dataset
 
 /**
   * Created by lucieburgess on 31/08/2017.
   * This class contains the logic of the learning algorithm Extreme Learning Machine.
   * Various parameters are passed into ELM Model so that labels can be predicted from the parameters.
-  * Class defined as sealed to prevent other classes and objects extending ELMClassifierAlgo
-  * This function calculates the output weight matrix beta and passes it to transform() in ClassifierModel.
-  * This takes a parameter, ds, which is the input training set to the model.
+  * Class defined as sealed to prevent other classes and objects extending it.
+  * This function calculates the output weight matrix beta and passes it to train in ELMClassifier and transform in ELMModel.
+  * Parameters required by the class are ds, in the input dataset, the number of hidden nodes and the activation function.
   */
-
-sealed class ELMAlgo(val ds: Dataset[_], hiddenNodes: Int, af: String) { // previously ExtendsELMClassifier
+sealed class ELMAlgo(val ds: Dataset[_], hiddenNodes: Int, af: String) {
 
   import ds.sparkSession.implicits._
 
-  /** Step 1: calculate main variables used in the model */
+  /**
+    * Step 1: calculate main variables used in the model
+    * L is assigned to hiddenNodes to make matrix computation simpler to follow
+    */
   val algoNumFeatures: Int = ds.select("features").head.get(0).asInstanceOf[Vector].size
-  println(s"The number of features in ELMAlgo is $algoNumFeatures")
-  println(s"The number of features in ELMAlgo is ${this.algoNumFeatures}")
 
   //FIXME - not currently used, as using the sigmoid and tanh built in Breeze functions.
   val chosenAF = new ActivationFunction(af) //activation function, set in ELMClassifier
 
   private val N: Int = ds.count().toInt
-  println(s"The number of training samples is $N")
 
-  private val L: Int = hiddenNodes // Number of hidden nodes, parameter set in ELMClassifier
-  println(s"The number of hidden nodes is $L")
+  private val L: Int = hiddenNodes
 
-  /** Step 2: calculate features matrix, X from spark dataset */
-  private val X: BDM[Double] = extractFeaturesMatrix(ds) //features matrix, which is transpose to preserve cardinality
+  /** Step 2: calculate features matrix, X from spark dataset
+    * Features matrix is actually tranpose compared to the dataset features to preserve cardinality
+    */
+  private val X: BDM[Double] = extractFeaturesMatrix(ds)
 
-  /** Step 3: extract the labels vector as a Breeze dense vector */
-  private val T: BDV[Double] = extractLabelsVector(ds) //labels vector
-
-  private val H: BDM[Double] = BDM.zeros[Double](N, L) //Hidden layer output matrix, initially empty
-
+  /** Step 3: extract the labels vector as a Breeze dense vector, length N */
+  private val T: BDV[Double] = extractLabelsVector(ds)
 
   /** Step 4: randomly assign input weight matrix of size (L, numFeatures) */
-  val weights: BDM[Double] = BDM.rand[Double](L, algoNumFeatures) // L x numFeatures
-  println(s"*************** The number of rows for weights is ${weights.rows} *****************")
-  println(s"*************** The number of coumns for weights is ${weights.cols} *****************")
+  val weights: BDM[Double] = BDM.rand[Double](L, algoNumFeatures)
 
-  /** Step 5: randomly assign bias vector of size L. */
-  val bias :BDV[Double] = BDV.rand[Double](L) // bias is column vector of length L
-  println(s"*************** The number of rows of the bias matrix is ${bias.length} *****************")
+  /** Step 5: randomly assign bias column vector of length L */
+  val bias :BDV[Double] = BDV.rand[Double](L)
 
   /**
     * Step 6: Calculate the output weight vector beta of length L where L is the number of hidden nodes
@@ -62,16 +55,8 @@ sealed class ELMAlgo(val ds: Dataset[_], hiddenNodes: Int, af: String) { // prev
     val H: BDM[Double] = sigmoid((M(::,*) + bias).t) //N x L
 
     val beta: BDV[Double] = pinv(H) * T // Vector of length L
-
-    println(s"*************** The number of rows for H is  ${H.rows} *****************")
-    println(s"*************** The number of cols for H is  ${H.cols} *****************")
-    println(s"*************** The length of Beta is  ${beta.length} *****************")
-
     beta
   }
-
-
-  // ******************************** Data-wrangling helper functions *******************************
 
   /**
     * Helper function to select features from a Spark dataset and return as a Breeze Dense Matrix. This allows pinv to be used
@@ -80,12 +65,11 @@ sealed class ELMAlgo(val ds: Dataset[_], hiddenNodes: Int, af: String) { // prev
     * NB. This gives a matrix in column major order and because the features are organised as vectors in each element
     * of the features column, we need to swap rows and columns. Therefore X has numFeatures rows and N(number of training samples)
     * columns. This effectively gives a amtrix which is transpose to the matrix we want. However the algorithm
-    * requires up to tranpose it, so we don't need to do that, just use the extracted version.
+    * requires us to transpose it, so we avoid that step and simply use the extracted version.
     */
   private def extractFeaturesMatrix(ds: Dataset[_]): BDM[Double] = {
 
     val array = ds.select("features").rdd.flatMap(r => r.getAs[Vector](0).toArray).collect
-    println(s"The size of the features matrix is $algoNumFeatures rows, $N cols ***********")
     new BDM[Double](algoNumFeatures,N,array)
   }
 
@@ -97,34 +81,6 @@ sealed class ELMAlgo(val ds: Dataset[_], hiddenNodes: Int, af: String) { // prev
   private def extractLabelsVector(ds: Dataset[_]): BDV[Double] = {
 
     val array = ds.select("binaryLabel").as[Double].collect
-    println(s"The size of the labels vector is ${array.length} ***********")
     new BDV[Double](array)
   }
-
 }
-
-/** Calculates label predictions for this model. Needs to be tested and moved to ELMModel */
-//def predictAllLabelsInOneGo(ds: Dataset[_], beta: BDV[Double]) :Vector = {
-//
-//  val datasetX: BDM[Double] = computeX(ds)
-//  val numSamples:Int = datasetX.rows //N
-//  val predictedLabels = new Array[Double](numSamples)
-//  for (i <- 0 until numSamples) { // for i <- 0 until N, for j <- 0 until L
-//  val node: IndexedSeq[Double] = for (j <- 0 until L) yield (beta(j) * chosenAF.function(weights(j, ::) * datasetX(i, ::).t + bias(j)))
-//  predictedLabels(i) = node.sum.round.toDouble
-//}
-//  new SDV(predictedLabels)
-//}
-
-/**
-  * Step 5: randomly assign bias vector of size L. Note we need this to be a matrix for later computations
-  * made up of the same column repeated N times. This is not particularly efficient in terms of storage space.
-  * However I can't find a way of adding a column vector repeatedly to different columns of a matrix.
-  * I've tried this as a column slice in Breeze but it's not working so this is a work-around
-  */
-//  val biasVector: BDM[Double] = BDM.rand[Double](L, 1)
-//  val biasArray: Array[Double] = biasVector.toArray // bias of Length L
-//  val buf = scala.collection.mutable.ArrayBuffer.empty[Array[Double]]
-//  for (i <- 0 until N) yield buf += biasArray
-//  val replicatedBiasArray: Array[Double] = buf.flatten.toArray
-

@@ -1,35 +1,29 @@
 package dev.elm
 
 import org.apache.spark.ml.classification.ClassificationModel
-import org.apache.spark.ml.linalg.{Vector, DenseMatrix => SDM, DenseVector => SDV}
-import breeze.linalg.{*, pinv, DenseMatrix => BDM, DenseVector => BDV, Matrix => BM, Vector => BV}
+import org.apache.spark.ml.linalg.{Vector, DenseVector => SDV}
+import breeze.linalg.{*, DenseMatrix => BDM, DenseVector => BDV}
 import breeze.numerics._
 import org.apache.spark.ml.param.ParamMap
 import org.apache.spark.ml.util.DefaultParamsWritable
-import org.apache.spark.rdd.RDD
-import org.apache.spark.sql.{DataFrame, Dataset, Row}
-import org.apache.spark.sql.functions.udf
-import org.apache.spark.sql.types._
 
 /**
   * Created by lucieburgess on 27/08/2017.
   * This class is a Transformer according to the Spark Pipeline model, and extends ClassificationModel
-  * The Classifier is trained with ELMClassifier from the algorithm ELMClassifierAlgo
+  * The Classifier is trained with ELMClassifier from the algorithm ELMAlgo
   *
-  * This uses the default implementation of transform(), which reads column "features" and
-  * outputs columns "prediction". 'rawPrediction" is calculated for each labelled point in the dataset
-  * from the parameters passed into ELMClassifier, based on the ELMClassifier trained using column "features".
-  * predictRaw(features: Vector) :Vector is implemented.
+  * predictRaw(features: Vector) :Vector is implemented. From this, "rawPrediction" is calculated for each labelled point
+  * in the dataset, from the parameters passed into ELMClassifier, based on the ELMClassifier trained using column "features".
+  *
+  * This uses the default implementation of transform(), which reads column "features" and outputs columns "prediction".
   * It also uses the default implementation of transformSchema(schema: StructType).
-  *
-  * This uses the default implementation of predict(), which chooses the label corresponding to
-  * the maximum value returned by [[predictRaw()]], as stated in the Classifier Model API.
-  *
+  * It also uses the default implementation of predict(), which chooses the label corresponding to
+  * the maximum value returned by predictRaw(), as stated in the Classifier Model API.
   */
 class ELMModel(val uid: String, val modelWeights: BDM[Double], val modelBias: BDV[Double], val modelBeta: BDV[Double],
                val modelHiddenNodes: Int, val modelAF: String, val modelNumFeatures: Int)
   extends ClassificationModel[Vector, ELMModel]
-    with ELMParams with DefaultParamsWritable { //val uid or override val uid?
+    with ELMParams with DefaultParamsWritable {
 
   /**
     * Implements value in API class ml.Model
@@ -42,80 +36,37 @@ class ELMModel(val uid: String, val modelWeights: BDM[Double], val modelBias: BD
 
   /**
     * Implements value in ml.classification.ClassificationModel
-    * Number of classes the label can take. 2 indicates binary classification
+    * Number of classes the label can take - 2 for binary classification
     */
   override val numClasses: Int = 2
 
-  override def numFeatures: Int = modelNumFeatures //PredictionModel sets numFeatures default as -1 (unknown)
-
-  //val inputColName = "features"
-  //val outputColName = "prediction"
+  /** PredictionModel sets numFeatures default as -1 (unknown) so this overrides that value */
+  override def numFeatures: Int = modelNumFeatures
 
   /**
-    * @param features, the vector of features being input into the model
+    * @param features , the vector of features being input into the model
     * @return vector of predictions for a single sample in the input dataset,
     *         where element i is the raw prediction for label i. This raw prediction may be any real number,
     *         where a larger value indicates greater confidence for that label
-    *         The underlying method in ClassificationModel then predicts raw2prediction, which given a vector of raw predictions
+    *         ClassificationModel API then predicts raw2prediction, which given a vector of raw predictions
     *         selects the predicted labels. raw2prediction can be overridden to support thresholds which favour particular labels.
     */
-  override def predictRaw(features: Vector) :Vector = {
+  override def predictRaw(features: Vector): Vector = {
 
-      println(s"The number of features in ELMModel predictRaw is $modelNumFeatures")
+    val featuresArray = features.toArray
+    val featuresMatrix = new BDM[Double](modelNumFeatures, 1, featuresArray) //numFeatures x 1
 
-      val featuresArray = features.toArray
-      val featuresMatrix = new BDM[Double](modelNumFeatures, 1, featuresArray) //numFeatures x 1
+    val bias: BDV[Double] = modelBias
+    //L x 1
+    val weights: BDM[Double] = modelWeights
+    // Lx numFeatures
+    val beta: BDV[Double] = modelBeta // (LxN).N => gives vector of length L
 
-      val bias: BDV[Double] = modelBias //L x 1
-      val weights: BDM[Double] = modelWeights // Lx numFeatures
-      val beta: BDV[Double] = modelBeta // (LxN).N => gives vector of length L
-
-      val M = weights * featuresMatrix // L x numFeatures. numFeatures x 1 = L x 1
-      val H = sigmoid((M(::, *)) + bias) // L x 1
-      val T = beta.t * H // L.(L x 1) of type Transpose[DenseVector]
-      new SDV((T.t).toArray) // length 1
+    val M = weights * featuresMatrix
+    // L x numFeatures. numFeatures x 1 = L x 1
+    val H = sigmoid((M(::, *)) + bias)
+    // L x 1
+    val T = beta.t * H // L.(L x 1) of type Transpose[DenseVector]
+    new SDV((T.t).toArray) // length 1
   }
-
-
-//  override def transform(data: Dataset[_]): DataFrame = {
-//
-//    import data.sparkSession.implicits._
-//
-//    val outputSchema = transformSchema(data.schema, logging = true)
-//    val inputType = data.schema("activityLabel").dataType // this should really be a double not an int
-//
-//    val numSamples: Int = data.count().toInt
-//
-//    def extractUdf = udf((v: SDV) => v.toArray)
-//    val temp: DataFrame = data.withColumn("extracted_features", extractUdf($"features"))
-//
-//    temp.printSchema()
-//
-//    val featuresArray1: Array[Double] = temp.rdd.map(r => r.getAs[Double](0)).collect
-//    val featuresArray2: Array[Double] = temp.rdd.map(r => r.getAs[Double](1)).collect
-//    val featuresArray3: Array[Double] = temp.rdd.map(r => r.getAs[Double](2)).collect
-//
-//    val allfeatures: Array[Array[Double]] = Array(featuresArray1, featuresArray2, featuresArray3)
-//    val numFeatures: Int = allfeatures.length
-//
-//    val flatFeatures: Array[Double] = allfeatures.flatten
-//
-//    temp.select("features","extracted_features").show(10)
-//
-//    val featuresMatrix = new BDM[Double](numSamples, numFeatures, flatFeatures) //gives matrix in column major order
-//
-//    val bias: BDV[Double] = modelBias // L x 1
-//    val weights: BDM[Double] = modelWeights //  L x numFeatures
-//    val beta: BDV[Double] = modelBeta // L x N.N => gives vector of length L
-//
-//    val M = weights * featuresMatrix // L x numFeatures. numFeatures x N where N is no. of test samples. NB Features must be of size (numFeatures, N)
-//    val H = sigmoid((M(::, *)) + bias) // L x numFeatures
-//    val T = beta.t * H // L.(L x N) of type Transpose[DenseVector]
-//    val rdd: RDD[Double] = spark.sparkContext.parallelize((T.t).toArray)//length N
-//
-//    val output: RDD[Row] = data.rdd.zip(rdd).map(r => Row.fromSeq(Seq(r._1) ++ Seq(r._2)))
-//
-//    spark.createDataFrame(output, data.schema)
-//  }
-
 }
