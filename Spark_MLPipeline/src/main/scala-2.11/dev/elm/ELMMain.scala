@@ -37,12 +37,10 @@ object ELMMain {
           success
         }
       }
-
     }
 
     parser.parse(args, defaultParams) match {
-      //case Some(params) => ELMPipeline.run(params) - not yet implemented
-      case Some(params) => println(s"ELM params \n$params")
+      case Some(params) => ELMPipeline.run(params)
       case _ => sys.exit(1)
     }
   }

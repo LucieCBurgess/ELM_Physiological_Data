@@ -24,7 +24,7 @@ object LRPipeline {
     */
   val singleFileName: String = "mHealth_subject1.txt"
   val singleFileUsed: Boolean = false
-  val multipleFolder: String = "Multiple10"
+  val multipleFolder: String = "Multiple3"
 
   def run(params: LRParams) :Unit = {
 

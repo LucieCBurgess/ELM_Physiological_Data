@@ -29,10 +29,10 @@ import org.apache.spark.mllib.linalg.VectorUDT
 trait ELMParams extends Params {
 
   /** Defines and sets the activation function parameter and uses the ParamValidators factory methods class to check configuration */
-  val activationFuncs: Array[String] = Array("sigmoid","tanh","sin","step") // NB all lower case
+  val activationFuncs: Array[String] = Array("sigmoid","tanh","sin") // NB all lower case
   val activationFunc: Param[String] =
     new Param[String](this,"activationFunc", s"The activation function which sets modifies the hidden layer output, " +
-      s"available activation functions: sigmoid, tanh, sin, step", ParamValidators.inArray(activationFuncs))
+      s"available activation functions: sigmoid, tanh, sin", ParamValidators.inArray(activationFuncs))
     def getActivationFunc: String = $(activationFunc)
 
   /** Parameter for the number of hidden nodes in the ELM */

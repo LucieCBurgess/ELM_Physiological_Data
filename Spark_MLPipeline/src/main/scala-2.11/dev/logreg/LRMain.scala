@@ -66,5 +66,4 @@ object LRMain {
       case _ => sys.exit(1)
     }
   }
-  //spark.stop()
 }
