@@ -20,7 +20,7 @@ object ELMPipeline {
   /** Amend singleFileUsed to false if more than a single file is being used
     * Amend "Multiple3" to "Multiple10" if running pipeline across full dataset of 10 users
     */
-  val singleFileName: String = "smalltest.txt"
+  val singleFileName: String = "mHealth_subject1.txt"
   val singleFileUsed: Boolean = true
   val multipleFolder: String = "Multiple3"
 

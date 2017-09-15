@@ -23,7 +23,7 @@ libraryDependencies += "org.apache.spark" %% "spark-streaming" % sparkVersion
 libraryDependencies += "org.apache.spark" %% "spark-mllib" % sparkVersion
 
 // Scopt dependencies
-libraryDependencies += "com.github.scopt" %% "scopt_2.11" % "3.7.0"
+libraryDependencies += "com.github.scopt" %% "scopt" % "3.6.0" // was scopt  3.6.0
 
 // Breeze dependencies https://github.com/scalanlp/breeze/wiki/Installation
 libraryDependencies  ++= Seq(
@@ -31,11 +31,9 @@ libraryDependencies  ++= Seq(
   "org.scalanlp" %% "breeze-natives" % "0.13.2",
   // the visualization library is distributed separately as well. It depends on LGPL code
   "org.scalanlp" %% "breeze-viz" % "0.13.2",
-  "com.github.fommil.netlib" % "all" % "1.1.2" pomOnly()
+  "com.github.fommil.netlib" % "all" % "1.1.2"
 )
 
 resolvers += "Sonatype Releases" at "https://oss.sonatype.org/content/repositories/releases/"
-
-
 
     
