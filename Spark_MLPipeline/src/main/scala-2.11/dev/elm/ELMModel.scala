@@ -56,16 +56,12 @@ class ELMModel(val uid: String, val modelWeights: BDM[Double], val modelBias: BD
     val featuresArray = features.toArray
     val featuresMatrix = new BDM[Double](modelNumFeatures, 1, featuresArray) //numFeatures x 1
 
-    val bias: BDV[Double] = modelBias
-    //L x 1
-    val weights: BDM[Double] = modelWeights
-    // Lx numFeatures
+    val bias: BDV[Double] = modelBias //L x 1
+    val weights: BDM[Double] = modelWeights// Lx numFeatures
     val beta: BDV[Double] = modelBeta // (LxN).N => gives vector of length L
 
-    val M = weights * featuresMatrix
-    // L x numFeatures. numFeatures x 1 = L x 1
-    val H = sigmoid((M(::, *)) + bias)
-    // L x 1
+    val M = weights * featuresMatrix// L x numFeatures. numFeatures x 1 = L x 1
+    val H = sigmoid((M(::, *)) + bias)// L x 1
     val T = beta.t * H // L.(L x 1) of type Transpose[DenseVector]
     new SDV((T.t).toArray) // length 1
   }

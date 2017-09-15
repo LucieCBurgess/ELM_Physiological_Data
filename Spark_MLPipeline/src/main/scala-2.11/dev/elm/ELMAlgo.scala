@@ -24,9 +24,6 @@ sealed class ELMAlgo(val ds: Dataset[_], hiddenNodes: Int, af: String) {
     */
   val algoNumFeatures: Int = ds.select("features").head.get(0).asInstanceOf[Vector].size
 
-  //FIXME - not currently used, as using the sigmoid and tanh built in Breeze functions.
-  //val chosenAF = new ActivationFunction(af) //activation function, set in ELMClassifier
-
   private val N: Int = ds.count().toInt
 
   private val L: Int = hiddenNodes
@@ -35,9 +32,11 @@ sealed class ELMAlgo(val ds: Dataset[_], hiddenNodes: Int, af: String) {
     * Features matrix is actually tranpose compared to the dataset features to preserve cardinality
     */
   private val X: BDM[Double] = extractFeaturesMatrix(ds)
+  //private val X: BDM[Double] = MatrixFuncs.extractFeaturesMatrix(ds,algoNumFeatures,N)
 
   /** Step 3: extract the labels vector as a Breeze dense vector, length N */
   private val T: BDV[Double] = extractLabelsVector(ds)
+  //private val T: BDV[Double] = MatrixFuncs.extractLabelsVector(ds)
 
   /** Step 4: randomly assign input weight matrix of size (L, numFeatures) */
   val weights: BDM[Double] = BDM.rand[Double](L, algoNumFeatures)
@@ -53,12 +52,15 @@ sealed class ELMAlgo(val ds: Dataset[_], hiddenNodes: Int, af: String) {
 
     val M: BDM[Double] = weights * X //L x numFeatures. numFeatures x N = L x N
 
+    //val Z: BDM[Double] = (M(::, *) + bias).t
+
+    //val H = CalculateH.calculateH(af, Z)
+
     def calculateH(af: String): BDM[Double] = af match {
       case "sigmoid" => sigmoid((M(::, *) + bias).t)
       case "tanh" => tanh((M(::, *) + bias).t)
       case "sin" => sin((M(::, *) + bias).t)
-      //case "step" => step((M(::, *) + bias).t)
-      case _ => throw new IllegalArgumentException("Activation function must be sigmoid, tanh, sin or step")
+      case _ => throw new IllegalArgumentException("Activation function must be sigmoid, tanh, or sin")
     }
 
     val H = calculateH(af)
@@ -96,8 +98,37 @@ sealed class ELMAlgo(val ds: Dataset[_], hiddenNodes: Int, af: String) {
   }
 }
 
-  object step extends UFunc with MappingUFunc {
-    implicit object stepImplDouble extends Impl[Double, Double] {
-      def apply(x: Double) = if (x >= 0.5) 1.0 else 0.0
-    }
+
+object CalculateH {
+
+  def calculateH(af: String, Z: BDM[Double]): BDM[Double] = af match {
+    case "sigmoid" => sigmoid(Z)
+    case "tanh" => tanh(Z)
+    case "sin" => sin(Z)
+    case _ => throw new IllegalArgumentException("Activation function must be sigmoid, tanh, or sin")
   }
+}
+
+object MatrixFuncs {
+  //import org.apache.spark.sql.Dataset
+
+  def extractFeaturesMatrix(ds: Dataset[_], numFeatures: Int, N: Int): BDM[Double] = {
+    import ds.sparkSession.implicits._
+    val array = ds.select("features").rdd.flatMap(r => r.getAs[Vector](0).toArray).collect
+    new BDM[Double](numFeatures, N, array)
+  }
+
+  def extractLabelsVector(ds: Dataset[_]): BDV[Double] = {
+    import ds.sparkSession.implicits._
+    val array = ds.select("binaryLabel").as[Double].collect
+    new BDV[Double](array)
+  }
+
+}
+
+
+object step extends UFunc with MappingUFunc {
+  implicit object stepImplDouble extends Impl[Double, Double] {
+    def apply(x: Double) = if (x >= 0.5) 1.0 else 0.0
+  }
+}
