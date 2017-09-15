@@ -61,8 +61,20 @@ class ELMModel(val uid: String, val modelWeights: BDM[Double], val modelBias: BD
     val beta: BDV[Double] = modelBeta // (LxN).N => gives vector of length L
 
     val M = weights * featuresMatrix// L x numFeatures. numFeatures x 1 = L x 1
-    val H = sigmoid((M(::, *)) + bias)// L x 1
+
+    val Z = M(::, *) + bias
+
+    def calculateH(af: String, Z: BDM[Double]): BDM[Double] = af match {
+      case "sigmoid" => sigmoid(Z)
+      case "tanh" => tanh(Z)
+      case "sin" => sin(Z)
+      case _ => throw new IllegalArgumentException("Activation function must be sigmoid, tanh, or sin")
+    }
+
+    val H = calculateH(modelAF, Z) //1xL
+
     val T = beta.t * H // L.(L x 1) of type Transpose[DenseVector]
+
     new SDV((T.t).toArray) // length 1
   }
 }

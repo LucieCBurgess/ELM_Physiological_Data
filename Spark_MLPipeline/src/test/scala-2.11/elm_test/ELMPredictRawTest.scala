@@ -1,12 +1,12 @@
 package elm_test
 
 import breeze.linalg.{*, pinv, DenseMatrix => BDM, DenseVector => BDV}
-import breeze.numerics.sigmoid
+import breeze.numerics._
 import dev.data_load.DataLoadOption
 import org.apache.spark.ml.linalg.{Vector, DenseVector => SDV}
 import org.apache.spark.ml.feature.VectorAssembler
 import org.apache.spark.rdd.RDD
-import org.apache.spark.sql.functions._
+import org.apache.spark.sql.functions.{monotonically_increasing_id, when, udf}
 import org.apache.spark.sql.{DataFrame, Dataset, SparkSession}
 import org.scalatest.{BeforeAndAfter, FunSuite}
 
@@ -127,23 +127,35 @@ class ELMPredictRawTest extends FunSuite with BeforeAndAfter {
     * for which predictions are being made
     * This is the method implemented in ELMModel.predictRaw()
     */
-  test("[03] Can calculate T using pass in a features vector to predictRaw()") {
+  test("[03] Can calculate T using pass in a features vector to predictRaw() using single AF") {
 
-    def predictRaw(features: Vector) :SDV = {
+    def predictRaw(features: Vector): SDV = {
 
       val featuresArray: Array[Double] = features.toArray
       val featuresMatrix = new BDM[Double](numFeatures, 1, featuresArray)
 
       val M = weights * featuresMatrix // L x numFeatures. numFeatures x N where N is no. of test samples.
-      val H = sigmoid((M(::, *)) + bias) // L x numFeatures
+
+      val Z = M(::, *) + bias
+
+      def calculateH(af: String, Z: BDM[Double]): BDM[Double] = af match {
+        case "sigmoid" => sigmoid(Z)
+        case "tanh" => tanh(Z)
+        case "sin" => sin(Z)
+        case _ => throw new IllegalArgumentException("Activation function must be sigmoid, tanh, or sin")
+      }
+
+      val H = sigmoid(M(::, *) + bias)// L x numFeatures
       val T = beta.t * H // L.(L x N) of type Transpose[DenseVector]
-      new SDV((T.t).toArray) //length N
+
+      new SDV(T.t.toArray)
     }
 
     val featuresRDD: RDD[Vector] = dataWithFeatures.select("features").rdd.map(_.getAs[Vector]("features"))
 
     val singleFeature: Vector = featuresRDD.collect()(0) //first feature in the array
-    val singlePrediction: SDV = predictRaw(singleFeature)
+
+    val singlePrediction: SDV = predictRaw(singleFeature) //uses sigmoid
     assert(singlePrediction.isInstanceOf[SDV])
     assert(singlePrediction.size == 1)
     println(singlePrediction.values.mkString(","))
@@ -151,13 +163,87 @@ class ELMPredictRawTest extends FunSuite with BeforeAndAfter {
     val predictions: SDV = new SDV(featuresRDD.collect().flatMap(f => predictRaw(f).toArray))
     assert(predictions.isInstanceOf[SDV])
     assert(predictions.size == data.count())
+
+  }
+
+    /**
+    * In this test a feature vector is passed in from a single sample.
+    * Simple matrix multiplication: T = (Beta.t x H).t where H is calculated from the dataset
+    * for which predictions are being made
+    * This is the method implemented in ELMModel.predictRaw()
+    */
+  test("[04] Can calculate T using a features vector to predictRaw() with different activation functions") {
+
+    def predictRaw(features: Vector) :Tuple3[SDV, SDV, SDV] = {
+
+      val featuresArray: Array[Double] = features.toArray
+      val featuresMatrix = new BDM[Double](numFeatures, 1, featuresArray)
+
+      val M = weights * featuresMatrix // L x numFeatures. numFeatures x N where N is no. of test samples.
+
+      val Z = M(::, *) + bias
+
+      def calculateH(af: String, Z: BDM[Double]): BDM[Double] = af match {
+        case "sigmoid" => sigmoid(Z)
+        case "tanh" => tanh(Z)
+        case "sin" => sin(Z)
+        case _ => throw new IllegalArgumentException("Activation function must be sigmoid, tanh, or sin")
+      }
+
+      val Hsig = calculateH("sigmoid", Z)
+      val Htan = calculateH("tanh", Z)
+      val Hsin = calculateH("sin", Z)
+
+      val H = sigmoid(M(::, *) + bias) // L x numFeatures
+      val T = beta.t * H // L.(L x N) of type Transpose[DenseVector]
+
+      val Tsig = beta.t * Hsig
+      val Ttan = beta.t * Htan
+      val Tsin = beta.t * Hsin
+
+
+      (new SDV((Tsig.t).toArray),new SDV((Ttan.t).toArray),new SDV((Tsin.t).toArray))
+    }
+
+    val featuresRDD: RDD[Vector] = dataWithFeatures.select("features").rdd.map(_.getAs[Vector]("features"))
+
+    val singleFeature: Vector = featuresRDD.collect()(0) //first feature in the array
+
+    val singlePrediction1: SDV = predictRaw(singleFeature)._1 //uses sigmoid
+    assert(singlePrediction1.isInstanceOf[SDV])
+    assert(singlePrediction1.size == 1)
+    println(singlePrediction1.values.mkString(","))
+
+    val predictions1: SDV = new SDV(featuresRDD.collect().flatMap(f => predictRaw(f)._1.toArray))
+    assert(predictions1.isInstanceOf[SDV])
+    assert(predictions1.size == data.count())
+
+    val singlePrediction2: SDV = predictRaw(singleFeature)._2 //uses tanh
+    assert(singlePrediction2.isInstanceOf[SDV])
+    assert(singlePrediction2.size == 1)
+    println(singlePrediction2.values.mkString(","))
+
+    val predictions2: SDV = new SDV(featuresRDD.collect().flatMap(f => predictRaw(f)._2.toArray))
+    assert(predictions2.isInstanceOf[SDV])
+    assert(predictions2.size == data.count())
+
+
+    val singlePrediction3: SDV = predictRaw(singleFeature)._3 //uses sin
+    assert(singlePrediction3.isInstanceOf[SDV])
+    assert(singlePrediction3.size == 1)
+    println(singlePrediction3.values.mkString(","))
+
+    val predictions3: SDV = new SDV(featuresRDD.collect().flatMap(f => predictRaw(f)._3.toArray))
+    assert(predictions3.isInstanceOf[SDV])
+    assert(predictions3.size == data.count())
+
   }
 
   /**
     * Another test using a udf, which passes - but no access to a DataFrame within ELMModel.
     * Therefore this code is not used
     */
-  test("[04] using a Spark udf") {
+  test("[05] using a Spark udf") {
 
     def extractUdf = udf((v: SDV) => v.toArray)
 

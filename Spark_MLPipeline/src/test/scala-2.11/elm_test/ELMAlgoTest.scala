@@ -1,7 +1,7 @@
 package elm_test
 
 import breeze.linalg.{*, pinv, DenseMatrix => BDM, DenseVector => BDV}
-import breeze.numerics.sigmoid
+import breeze.numerics._
 import dev.data_load.DataLoadOption
 import org.apache.spark.ml.linalg.Vector
 import org.apache.spark.ml.feature.VectorAssembler
@@ -293,15 +293,40 @@ class ELMAlgoTest extends FunSuite {
     assert(M.rows == 10) // L x N
     assert(M.cols == 22)
 
-    val H: BDM[Double] = sigmoid((M(::,*) + bias).t) // We want H to be N x L so that pinv(H) is L x N
+    val Z: BDM[Double] = (M(::,*) + bias).t // We want H to be N x L so that pinv(H) is L x N
 
-    assert(H.isInstanceOf[BDM[Double]]) // N x L
-    assert(H.rows == 22)
-    assert(H.cols == 10)
+    def calculateH(af: String, Z: BDM[Double]): BDM[Double] = af match {
+      case "sigmoid" => sigmoid(Z)
+      case "tanh" => tanh(Z)
+      case "sin" => sin(Z)
+      case _ => throw new IllegalArgumentException("Activation function must be sigmoid, tanh, or sin")
+    }
+
+    val H1 = calculateH("sigmoid", Z)
+    val H2 = calculateH("tanh", Z)
+    val H3 = calculateH("sin", Z)
+
+    //val H: BDM[Double] = sigmoid((M(::,*) + bias).t) // We want H to be N x L so that pinv(H) is L x N
+
+    assert(H1.isInstanceOf[BDM[Double]]) // N x L
+    assert(H1.rows == 22)
+    assert(H1.cols == 10)
+
+    assert(H2.isInstanceOf[BDM[Double]]) // N x L
+    assert(H2.rows == 22)
+    assert(H2.cols == 10)
+
+    assert(H3.isInstanceOf[BDM[Double]]) // N x L
+    assert(H3.rows == 22)
+    assert(H3.cols == 10)
+
+    intercept[IllegalArgumentException] {
+      val H4 = calculateH("custard", Z)
+    }
 
     val T: BDV[Double] = extractLabelsVector(smallDF)
 
-    val beta: BDV[Double] = pinv(H) * T // Length L because (L x N) * N gives vector of length L
+    val beta: BDV[Double] = pinv(H1) * T // Length L because (L x N) * N gives vector of length L
 
     assert(beta.isInstanceOf[BDV[Double]])
     assert(beta.length == 10)
