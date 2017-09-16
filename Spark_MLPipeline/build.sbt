@@ -23,7 +23,7 @@ libraryDependencies += "org.apache.spark" %% "spark-streaming" % sparkVersion
 libraryDependencies += "org.apache.spark" %% "spark-mllib" % sparkVersion
 
 // Scopt dependencies
-libraryDependencies += "com.github.scopt" %% "scopt" % "3.6.0" // was scopt  3.6.0
+//libraryDependencies += "com.github.scopt" %% "scopt" % "3.6.0" // was scopt  3.6.0
 
 // Breeze dependencies https://github.com/scalanlp/breeze/wiki/Installation
 libraryDependencies  ++= Seq(

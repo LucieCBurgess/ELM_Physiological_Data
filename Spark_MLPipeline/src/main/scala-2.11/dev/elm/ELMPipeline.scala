@@ -20,8 +20,8 @@ object ELMPipeline {
   /** Amend singleFileUsed to false if more than a single file is being used
     * Amend "Multiple3" to "Multiple10" if running pipeline across full dataset of 10 users
     */
-  val singleFileName: String = "smalltest.txt"
-  val singleFileUsed: Boolean = true
+  val singleFileName: String = "mHealth_subject2.txt"
+  val singleFileUsed: Boolean = false
   val multipleFolder: String = "Multiple3"
 
   def run(params: DefaultELMParams): Unit = {
@@ -119,8 +119,8 @@ object ELMPipeline {
     evaluateClassificationModel("Test", pipelineModel, testData)
 
     /** Perform cross-validation on the dataset */
-    println("Performing cross validation and computing best parameters")
-    performCrossValidation(trainData, testData, params, pipeline, elm)
+    //println("Performing cross validation and computing best parameters")
+    //performCrossValidation(trainData, testData, params, pipeline, elm)
 
     spark.stop()
   }
