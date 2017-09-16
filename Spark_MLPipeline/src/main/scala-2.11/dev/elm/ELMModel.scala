@@ -75,6 +75,10 @@ class ELMModel(val uid: String, val modelWeights: BDM[Double], val modelBias: BD
 
     val T = beta.t * H // L.(L x 1) of type Transpose[DenseVector]
 
-    new SDV((T.t).toArray) // length 1
+    val rawPredictions: Array[Double] = Array(-T(0), T(0))
+
+    new SDV(rawPredictions) //length 1
+
+    //new SDV(T.t.toArray)// length 1, was new SDV(T.t.toArray)
   }
 }

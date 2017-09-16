@@ -1,6 +1,6 @@
 package dev.elm
 
-import dev.data_load.{DataLoadOption, MHealthUser}
+import dev.data_load.{DataLoadOption, DataLoadWTF, MHealthUser}
 import org.apache.spark.ml.evaluation.{BinaryClassificationEvaluator, Evaluator}
 import org.apache.spark.ml.feature.VectorAssembler
 import org.apache.spark.ml.tuning.{CrossValidator, ParamGridBuilder}
@@ -17,10 +17,12 @@ import scala.collection.mutable
   */
 object ELMPipeline {
 
-  /** Amend singleFileUsed to false if more than a single file is being used
-    * Amend "Multiple3" to "Multiple10" if running pipeline across full dataset of 10 users
+  /**
+    * Requires Spark driver size to be set to 4G for a single file
+    * Requires Spark driver size to be set to 8G for three files
+    * Do not attempt to run this on the full dataset!
     */
-  val singleFileName: String = "mHealth_subject2.txt"
+  val singleFileName: String = "mHealth_subject1.txt"
   val singleFileUsed: Boolean = false
   val multipleFolder: String = "Multiple3"
 
@@ -34,17 +36,17 @@ object ELMPipeline {
 
     println(s"Extreme Learning Machine applied to the mHealth data with parameters: \n$params")
 
-    /** Load training and test data and cache it
-      * A single method only is used here for one input dataset
-      * //FIXME - add the multiple dataload option to see if the method works on more than one file on the command line
-      */
-    val data = DataLoadOption.createDataFrame(singleFileName) match {
+    /** Load training and test data and cache it */
+    val df2 = if(singleFileUsed) DataLoadOption.createDataFrame(singleFileName) match {
       case Some(df) => df
-        .filter($"activityLabel" > 0.0)
-        .withColumn("binaryLabel", when($"activityLabel".between(1.0, 3.0), 0.0).otherwise(1.0))
-        .withColumn("uniqueID", monotonically_increasing_id())
       case None => throw new UnsupportedOperationException("Couldn't create DataFrame")
     }
+    else DataLoadWTF.createDataFrame(multipleFolder)
+
+    val data = df2.filter($"activityLabel" > 0)
+      .withColumn("binaryLabel", when($"activityLabel".between(1.0, 3.0), 0.0).otherwise(1.0))
+      .withColumn("uniqueID", monotonically_increasing_id())
+
 
     val Nsamples: Int = data.count().toInt
     println(s"The number of training samples is $Nsamples")
@@ -69,7 +71,7 @@ object ELMPipeline {
       .setFeaturesCol("features")
       .setLabelCol("binaryLabel")
       .setHiddenNodes(params.hiddenNodes)
-      .setActivationFunc(params.activationFunc) //was sigmoid
+      .setActivationFunc(params.activationFunc)
       .setFracTest(params.fracTest)
 
     pipelineStages += elm
@@ -83,7 +85,7 @@ object ELMPipeline {
     val test: Double = elm.getFracTest
     val Array(trainData, testData) = dataWithFeatures.randomSplit(Array(train, test), seed = 12345)
 
-    /** Fit the pipeline, which includes training the model, on the preparedData */
+    /** Fit the pipeline, which includes training the model */
     val startTime = System.nanoTime()
 
     val pipelineModel: PipelineModel = pipeline.fit(trainData)
@@ -98,34 +100,19 @@ object ELMPipeline {
     val trainingTime = (System.nanoTime() - startTime) / 1e9
     println(s"Training time: $trainingTime seconds")
 
-    /** Evaluate the model on the training and test data */
-    val startTime2 = System.nanoTime()
-    val predictionsTrain = elmModel.transform(trainData).cache()
-    val predictTimeTrain = (System.nanoTime() - startTime2) / 1e9
-    println(s"Prediction time for the training data: $predictTimeTrain seconds")
-    println(s"Printing predictions for the training data")
-    predictionsTrain.show(10)
-
-    val startTime3 = System.nanoTime()
-    val predictionsTest: DataFrame = elmModel.transform(testData).cache()
-    val predictTimeTest = (System.nanoTime() - startTime3) / 1e9
-    println(s"Prediction time for the test data: $predictTimeTest seconds")
-    println(s"Printing predictions for the test data")
-    predictionsTest.show(10)
-
     /** Make predictions and evaluate the model using BinaryClassificationEvaluator */
-    println("Evaluating model and calculating train and test AUROC - larger is better")
-    evaluateClassificationModel("Train",pipelineModel, trainData) // using elmModel instead of pipelineModel
+    println("Evaluating model, calculating train and test AUROC (larger is better) and Confusion Matrix (smaller is better)")
+    evaluateClassificationModel("Train",pipelineModel, trainData)
     evaluateClassificationModel("Test", pipelineModel, testData)
 
     /** Perform cross-validation on the dataset */
-    //println("Performing cross validation and computing best parameters")
+    //println("Performing cross validation and computing best parameter using the Confusion Matrix approach:")
     //performCrossValidation(trainData, testData, params, pipeline, elm)
 
     spark.stop()
   }
 
-  /** Utilities for methods above *************/
+  /****************** Utilities for methods above *****************/
 
   /** Helper method to check the selected feature columns are in the schema
     *
@@ -144,14 +131,25 @@ object ELMPipeline {
   /**
     * Singleton version of BinaryClassificationEvaluator so we can use the same instance across the whole model
     *  metric must be "areaUnderROC" or "areaUnderPR" according to BinaryClassificationEvaluator API
+    *  .setRawPredictionCol expects a vector of length 2 so the label must be output as a vector of (-rawPrediction, rawPrediction)
+    *  for this to work.
     */
-  private object SingletonEvaluator {
+  private object AUROCSingletonEvaluator {
     val elmEvaluator: Evaluator = new BinaryClassificationEvaluator()
       .setMetricName("areaUnderROC")
       .setLabelCol("binaryLabel")
-      .setRawPredictionCol("prediction") //NB. must be "prediction" not rawPrediction otherwise BinaryClassificationEvaluator expects a vector of length 2.
+      .setRawPredictionCol("rawPrediction")
 
     def getEvaluator: Evaluator = elmEvaluator
+  }
+
+  /**
+    * Simple custom evaluation of the model using ELMEvaluator, which compares the predictions to the labels and
+    * computes the mean % of incorrectly classified labels across the whole dataset
+    */
+  private object ELMSingletonEvaluator {
+    val elmNetEvaluator: Evaluator = new ELMEvaluator()
+    def getElmNetEvaluator: Evaluator = elmNetEvaluator
   }
 
   /**
@@ -164,28 +162,33 @@ object ELMPipeline {
     val startTime = System.nanoTime()
     val predictions = model.transform(df).cache() // gives predictions for both training and test data
     val predictionTime = (System.nanoTime() - startTime) / 1e9
-    println(s"Running time: $predictionTime seconds")
-    predictions.printSchema()
+    println(s"Prediction time for model $modelName: is $predictionTime seconds")
+    predictions.show(10)
 
-    val selected = predictions.select("activityLabel", "binaryLabel", "features", "rawPrediction", "prediction")
-    selected.show()
+    val aurocEvaluator = AUROCSingletonEvaluator.getEvaluator
+    val output1 = aurocEvaluator.evaluate(predictions)
 
-    val evaluator = SingletonEvaluator.getEvaluator
+    val mseEvaluator = ELMSingletonEvaluator.getElmNetEvaluator
+    val output2 = mseEvaluator.evaluate(predictions)
 
-    val output = evaluator.evaluate(predictions)
+    println(s"Classification results for $modelName using AUROC: ")
+    if(singleFileUsed)
+    println(s"The accuracy of the model $modelName for input file $singleFileName using AUROC is: $output1")
+    else println(s"The accuracy of the model $modelName for input file $multipleFolder using AUROC is: $output1")
 
-    println(s"Classification results for $modelName: ")
+    println(s"Classification results for $modelName using ConfusionMatrix: ")
     if (singleFileUsed)
-      println(s"The accuracy of the model $modelName for input file $singleFileName using AUROC is: $output")
-    else println(s"The accuracy of the model $modelName for input file $multipleFolder using AUROC is $output")
-
+    println(s"The accuracy of the model $modelName for input file $singleFileName using Confusion Matrix is: $output2")
+    else println(s"The accuracy of the model $modelName for input file $multipleFolder using Confusion Matrix is: $output2")
   }
 
   /**
     * Perform cross validation on the data and select the best pipeline model given the data and parameters
+    * This model uses the confusion matrix/ mean-squared-error approach, not AUROC, as AUROC is not useful
+    * for classifiers which do not assign a probability score to the predictions, such as neural networks
     * @param trainData the training dataset
     * @param testData the test dataset
-    * @param params the parameters that can be set in the Pipeline - currently LogisticRegression only, may need to amend
+    * @param params the default parameters set for the ELM.
     * @param pipeline the pipeline to which cross validation is being applied
     * @param elm the ELM model being cross-validated
     */
@@ -193,12 +196,13 @@ object ELMPipeline {
 
     val paramGrid = new ParamGridBuilder()
       .addGrid(elm.activationFunc, Array(params.activationFunc, "tanh", "sin"))
-      .addGrid(elm.hiddenNodes, Array(params.hiddenNodes, 10, 100, 200))
+      .addGrid(elm.hiddenNodes, Array(params.hiddenNodes, 10, 100, 150))
       .build()
 
     println(s"ParamGrid size is ${paramGrid.size}")
 
-    val evaluator = SingletonEvaluator.getEvaluator
+    /** Note use of ELMSingletonEvaluator instead of BinarySingletonEvaluator */
+    val evaluator = ELMSingletonEvaluator.getElmNetEvaluator
 
     val cv = new CrossValidator()
       .setEstimator(pipeline)
@@ -209,7 +213,6 @@ object ELMPipeline {
     val cvStartTime = System.nanoTime()
     val cvModel = cv.fit(trainData)
     val cvPredictions = cvModel.transform(testData)
-    cvPredictions.select("activityLabel", "binaryLabel", "features", "rawPrediction", "prediction").show
 
     evaluator.evaluate(cvPredictions)
     val crossValidationTime = (System.nanoTime() - cvStartTime) / 1e9

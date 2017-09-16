@@ -37,7 +37,7 @@ trait ELMParams extends Params {
 
   /** Parameter for the number of hidden nodes in the ELM */
   val hiddenNodes: IntParam =
-    new IntParam(this, "hiddenNodes", "number of hidden nodes in the ELM", ParamValidators.inRange(10.0,200.0))
+    new IntParam(this, "hiddenNodes", "number of hidden nodes in the ELM", ParamValidators.inRange(10.0,1000.0))
     def getHiddenNodes: Int = $(hiddenNodes)
 
   /**

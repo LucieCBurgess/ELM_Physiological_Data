@@ -1,6 +1,7 @@
 package dev.elm
 
 import dev.logreg.{LRParams, LRPipeline}
+import org.apache.log4j.{Level, Logger}
 import org.apache.spark
 import org.apache.spark.sql.SparkSession
 
@@ -12,6 +13,8 @@ import org.apache.spark.sql.SparkSession
 
 object ELMMain {
 
+  Logger.getLogger("org").setLevel(Level.ERROR)
+  Logger.getLogger("akka").setLevel(Level.ERROR)
 
   def main(args: Array[String]): Unit = {
 

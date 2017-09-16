@@ -50,7 +50,7 @@ sealed class ELMAlgo(val ds: Dataset[_], hiddenNodes: Int, af: String) {
 
     val M: BDM[Double] = weights * X //L x numFeatures. numFeatures x N = L x N
 
-    val Z: BDM[Double] = (M(::, *) + bias).t
+    val Z: BDM[Double] = (M(::, *) + bias) // was .t
 
     def calculateH(af: String, Z: BDM[Double]): BDM[Double] = af match {
       case "sigmoid" => sigmoid(Z)
@@ -61,7 +61,11 @@ sealed class ELMAlgo(val ds: Dataset[_], hiddenNodes: Int, af: String) {
 
     val H = calculateH(af, Z)
 
-    val beta: BDV[Double] = pinv(H) * T // Vector of length L
+    println(s"H size is ${H.rows} rows, ${H.cols} columns")
+
+    val beta: BDV[Double] = pinv(H).t * T // Vector of length L
+
+    println(s"beta size is ${beta.length} ")
     beta
   }
 
