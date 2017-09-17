@@ -1,10 +1,6 @@
 package prod.elm
 
-import dev.data_load.MHealthUser
 import org.apache.spark.ml.param._
-import org.apache.spark.sql.catalyst.ScalaReflection
-import org.apache.spark.sql.types.{StructField,StructType}
-import org.apache.spark.mllib.linalg.VectorUDT
 
 /**
   * Created by lucieburgess on 27/08/2017.
