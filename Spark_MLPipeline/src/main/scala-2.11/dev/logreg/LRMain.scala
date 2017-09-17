@@ -1,14 +1,14 @@
 package dev.logreg
 
 import org.apache.log4j.{Level, Logger}
-import org.apache.spark.sql.SparkSession
-import org.apache.spark.ml.param.{ParamMap, Params}
 
 /**
   * Created by lucieburgess on 25/08/2017.
   * Main method for LogisticRegression code, setting up parameters and calling run()
   */
 object LRMain {
+
+  /** This can be switched to INFO if more detailed is required but output is verbose */
 
   Logger.getLogger("org").setLevel(Level.ERROR)
   Logger.getLogger("akka").setLevel(Level.ERROR)
@@ -48,9 +48,6 @@ object LRMain {
       opt[Double]("fracTest")
         .text(s"The fraction of the data to use for testing, default: ${defaultParams.fracTest}")
         .action((x, c) => c.copy(fracTest = x))
-
-//      opt[String]("dataFormat").text(s"Please enter the dataformat here, default: ${defaultParams.dataFormat}")
-//        .action((x, c) => c.copy(dataFormat = x))
 
       checkConfig { params =>
         if (params.fracTest < 0 || params.fracTest >= 1) {

@@ -1,18 +1,16 @@
 package dev.elm
 
-import dev.logreg.{LRParams, LRPipeline}
 import org.apache.log4j.{Level, Logger}
-import org.apache.spark
-import org.apache.spark.sql.SparkSession
 
 /**
   * Created by lucieburgess on 27/08/2017.
   * Defines a number of parameters for this ELM and incorporates main method to run ELM
-  * Set the layout for using the parsing the parameters using Scopt, https://github.com/scopt/scopt
+  * Set the layout for using the parsing the parameters using Scopt, https://github.com/scopt/
   */
 
 object ELMMain {
 
+  /** switches off verbose output to the console. Can be set to INFO if preferred */
   Logger.getLogger("org").setLevel(Level.ERROR)
   Logger.getLogger("akka").setLevel(Level.ERROR)
 

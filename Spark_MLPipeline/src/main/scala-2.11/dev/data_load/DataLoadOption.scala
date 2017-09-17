@@ -1,17 +1,12 @@
 package dev.data_load
 
 import org.apache.spark.sql.{DataFrame, SparkSession}
-
 import scala.util.Try
 
 /**
   * Created by lucieburgess on 24/08/2017.
-  * Helper function to create a DataFrame from a textfile, re-used in subsequent classes, with some exception handling
-  * See https://stackoverflow.com/questions/45895642/how-to-correctly-handle-option-in-spark-scala
+  * Helper function to create a DataFrame from a textfile, re-used in subsequent classes, with some exception handling.
   */
-
-//FIXME - there should be an elegant way to validate that the incoming data is in the correct format, e.g. there aren't Strings or Longs in the data instead of Doubles and Ints
-// For a good example see https://stackoverflow.com/questions/33270907/how-to-validate-contents-of-spark-dataframe
 
 object DataLoadOption {
   lazy val spark: SparkSession = SparkSession

@@ -7,7 +7,7 @@ import scala.util.Try
 /**
   * Created by lucieburgess on 10/09/2017. Try using WholeTextFile method instead of TextFile method.
   * Has an additional operation to flatmap the rows.
-  * 3 partitions used in the method but could vary this to test the impact on performance.
+  * 3 partitions used in the method but could vary this to test the impact on performance in future.
   */
 object DataLoadWTF {
 

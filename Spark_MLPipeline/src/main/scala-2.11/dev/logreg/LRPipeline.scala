@@ -1,12 +1,5 @@
 package dev.logreg
 
-/**
-  * Created by lucieburgess on 15/08/2017.
-  * Logistic Regression pipeline following numerous online examples to learn Spark programming constructs and apply pipeline
-  * model to ELM
-  * Main method is in LRTestMain.scala
-  */
-
 import dev.data_load.{DataLoadOption, DataLoadWTF}
 import org.apache.spark.ml.classification.{LogisticRegression, LogisticRegressionModel}
 import org.apache.spark.ml.evaluation.{BinaryClassificationEvaluator, Evaluator}
@@ -17,9 +10,19 @@ import org.apache.spark.sql.{DataFrame, SparkSession}
 import org.apache.spark.sql.functions._
 import scala.collection.mutable
 
+/**
+  * Created by lucieburgess on 15/08/2017.
+  * Logistic Regression pipeline following numerous online examples to learn Spark programming constructs
+  * and apply pipeline model to ELM. See for example:
+  * https://github.com/apache/spark/blob/master/examples/src/main/scala/org/apache/spark/examples/SparkLR.scala
+  *
+  * Main method is in LRMain.
+  */
+
 object LRPipeline {
 
-  /** Amend singleFileUsed to false if more than a single file is being used
+  /**
+    * Amend singleFileUsed to false if more than a single file is being used
     * Amend "Multiple3" to "Multiple10" if running pipeline across full dataset of 10 users
     */
   val singleFileName: String = "mHealth_subject1.txt"
@@ -44,18 +47,21 @@ object LRPipeline {
       }
       else DataLoadWTF.createDataFrame(multipleFolder)
 
-    val df3 = df2.filter($"activityLabel" > 0)
+    val data = df2.filter($"activityLabel" > 0)
         .withColumn("binaryLabel", when($"activityLabel".between(1.0, 3.0), 0.0).otherwise(1.0))
         .withColumn("uniqueID", monotonically_increasing_id())
+
+    val Nsamples: Int = data.count().toInt
+    println(s"The number of training samples is $Nsamples")
 
     /** Set up the pipeline stages */
     val pipelineStages = new mutable.ArrayBuffer[PipelineStage]()
 
-    df3.show()
-
     /**
       * Combine columns which we think will predict activity into a single feature vector
       * Sets the input columns and the output column as a new column, a vector, 'features' and adds to the pipeline
+      * 6 features used in this example
+      * Adds the features to the pipeline
       */
     val featureCols = Array("acc_Chest_X", "acc_Chest_Y", "acc_Chest_Z", "acc_Arm_X", "acc_Arm_Y", "acc_Arm_Z")
     val featureAssembler = new VectorAssembler().setInputCols(featureCols).setOutputCol("features")
@@ -77,7 +83,7 @@ object LRPipeline {
     /** Randomly split data into test, train with 50% split */
     val train: Double = 1-params.fracTest
     val test: Double = params.fracTest
-    val Array(trainData, testData) = df3.randomSplit(Array(train, test), seed = 12345)
+    val Array(trainData, testData) = data.randomSplit(Array(train, test), seed = 12345)
 
     println(s"The size of the training set is ${trainData.count()}")
     println(s"The size of the test set is ${testData.count()}")
@@ -103,7 +109,7 @@ object LRPipeline {
 
     /** Perform cross-validation on the dataset */
     println("Performing cross validation and computing best parameters")
-    performCrossValidation(trainData, testData, params, pipeline, lr)
+    performCrossValidation(data, params, pipeline, lr)
 
     spark.stop()
   }
@@ -129,7 +135,7 @@ object LRPipeline {
   private def evaluateClassificationModel(modelName: String, model: Transformer, df: DataFrame): Unit = {
 
     val startTime = System.nanoTime()
-    val predictions = model.transform(df).cache() // gives predictions for both training and test data
+    val predictions = model.transform(df).cache()
     val predictionTime = (System.nanoTime() - startTime) / 1e9
     println(s"Running time: $predictionTime seconds")
     predictions.printSchema()
@@ -150,13 +156,12 @@ object LRPipeline {
 
   /**
     * Perform cross validation on the data and select the best pipeline model given the data and parameters
-    * @param trainData the training dataset
-    * @param testData the test dataset
+    * @param data the dataset for which CV is being performed
     * @param params the parameters that can be set in the Pipeline - currently LogisticRegression only, may need to amend
     * @param pipeline the pipeline to which cross validation is being applied
     * @param lr the LogisticRegression model being cross-validated
     */
-  private def performCrossValidation(trainData: DataFrame, testData: DataFrame, params: LRParams, pipeline: Pipeline, lr: LogisticRegression) :Unit = {
+  private def performCrossValidation(data: DataFrame, params: LRParams, pipeline: Pipeline, lr: LogisticRegression) :Unit = {
 
     val paramGrid = new ParamGridBuilder()
       .addGrid(lr.regParam, Array(params.regParam, 0.01, 0.1))
@@ -174,10 +179,13 @@ object LRPipeline {
       .setEstimatorParamMaps(paramGrid)
       .setNumFolds(5)
 
+    println("Performing cross-validation on the dataset")
     val cvStartTime = System.nanoTime()
-    val cvModel = cv.fit(trainData)
-    val cvPredictions = cvModel.transform(testData)
-    cvPredictions.select("activityLabel", "binaryLabel", "features", "rawPrediction", "probability", "prediction").show
+    val cvModel = cv.fit(data)
+    val cvPredictions = cvModel.transform(data)
+    println(s"Parameters of this CV instance are ${cv.explainParams()}")
+    cvPredictions.select("activityLabel", "binaryLabel", "features", "rawPrediction", "probability", "prediction")
+                .show(10)
 
     evaluator.evaluate(cvPredictions)
     val crossValidationTime = (System.nanoTime() - cvStartTime) / 1e9

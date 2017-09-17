@@ -18,9 +18,10 @@ import scala.collection.mutable
 object ELMPipeline {
 
   /**
-    * Requires Spark driver size to be set to 4G for a single file
-    * Requires Spark driver size to be set to 8G for three files
-    * Do not attempt to run this on the full dataset!
+    * Requires Spark driver size to be set to 8G for a single file for cross-validation on 3 folds.
+    * Do not attempt to run this on more than a single dataset at one time.
+    * The multiple file option is available for future development.
+    * If using more than one file in future, set singleFileUsed to false.
     */
   val singleFileName: String = "mHealth_subject1.txt"
   val singleFileUsed: Boolean = true
@@ -47,7 +48,6 @@ object ELMPipeline {
       .withColumn("binaryLabel", when($"activityLabel".between(1.0, 3.0), 0.0).otherwise(1.0))
       .withColumn("uniqueID", monotonically_increasing_id())
 
-
     val Nsamples: Int = data.count().toInt
     println(s"The number of training samples is $Nsamples")
 
@@ -60,11 +60,14 @@ object ELMPipeline {
 
     /**
       * Add the features to the DataFrame using VectorAssembler.
-      * Pipeline.fit() command is not picking up the VectorAssembler properly so we have to transform the data outside the pipeline
-      * This has to be done outside pipelineStages due to a bug in the API
+      * Pipeline.fit() does not pick up the VectorAssembler properly due to a bug in the API
+      * so we have to transform the data outside the pipeline.
       */
     val featureAssembler = new VectorAssembler().setInputCols(featureCols).setOutputCol("features")
     val dataWithFeatures = featureAssembler.transform(data)
+
+    println(s"The schema of the MHealth data is: \n")
+    dataWithFeatures.printSchema()
 
     /** Create the classifier, set parameters for training */
     val elm = new ELMClassifier()
@@ -80,7 +83,7 @@ object ELMPipeline {
     /** Set the pipeline from the pipeline stages */
     val pipeline: Pipeline = new Pipeline().setStages(pipelineStages.toArray)
 
-    /** UseFracTest to set up the (trainData, testData) tuple and randomly split the preparedData */
+    /** Use fracTest parameter to set up the (trainData, testData) tuple and randomly split the data */
     val train: Double = 1 - elm.getFracTest
     val test: Double = elm.getFracTest
     val Array(trainData, testData) = dataWithFeatures.randomSplit(Array(train, test), seed = 12345)
@@ -91,23 +94,18 @@ object ELMPipeline {
     val pipelineModel: PipelineModel = pipeline.fit(trainData)
     val elmModel = pipelineModel.stages.last.asInstanceOf[ELMModel]
 
-    println(s"The schema of the training data is ${trainData.printSchema}")
-    trainData.printSchema
-
-    println(s"The schema of the test data is ${testData.printSchema}")
-    testData.printSchema
-
     val trainingTime = (System.nanoTime() - startTime) / 1e9
     println(s"Training time: $trainingTime seconds")
 
     /** Make predictions and evaluate the model using BinaryClassificationEvaluator */
-    println("Evaluating model, calculating train and test AUROC (larger is better) and Confusion Matrix (smaller is better)")
+    println("Evaluating model, calculating training and test AUROC (larger is better) " +
+      "and Confusion Matrix (smaller is better)")
     evaluateClassificationModel("Train",pipelineModel, trainData)
     evaluateClassificationModel("Test", pipelineModel, testData)
 
     /** Perform cross-validation on the dataset */
-    //println("Performing cross validation and computing best parameter using the Confusion Matrix approach:")
-    //performCrossValidation(trainData, testData, params, pipeline, elm)
+    println("Performing cross validation and computing best parameter using the Confusion Matrix approach:")
+    performCrossValidation(dataWithFeatures, params, pipeline, elm)
 
     spark.stop()
   }
@@ -131,8 +129,8 @@ object ELMPipeline {
   /**
     * Singleton version of BinaryClassificationEvaluator so we can use the same instance across the whole model
     *  metric must be "areaUnderROC" or "areaUnderPR" according to BinaryClassificationEvaluator API
-    *  .setRawPredictionCol expects a vector of length 2 so the label must be output as a vector of (-rawPrediction, rawPrediction)
-    *  for this to work.
+    *  .setRawPredictionCol expects a vector of length 2 so the predicted label must be output as a vector of
+    *  (-rawPrediction, rawPrediction) for this to work.
     */
   private object AUROCSingletonEvaluator {
     val elmEvaluator: Evaluator = new BinaryClassificationEvaluator()
@@ -160,9 +158,10 @@ object ELMPipeline {
   private def evaluateClassificationModel(modelName: String, model: Transformer, df: DataFrame): Unit = {
 
     val startTime = System.nanoTime()
-    val predictions = model.transform(df).cache() // gives predictions for both training and test data
+    val predictions = model.transform(df).cache()
     val predictionTime = (System.nanoTime() - startTime) / 1e9
     println(s"Prediction time for model $modelName: is $predictionTime seconds")
+    println(s"Printing the first 10 lines of the dataset $modelName with predictions")
     predictions.show(10)
 
     val aurocEvaluator = AUROCSingletonEvaluator.getEvaluator
@@ -171,12 +170,12 @@ object ELMPipeline {
     val mseEvaluator = ELMSingletonEvaluator.getElmNetEvaluator
     val output2 = mseEvaluator.evaluate(predictions)
 
-    println(s"Classification results for $modelName using AUROC: ")
+    println(s"Classification results for $modelName using AUROC (larger is better): ")
     if(singleFileUsed)
     println(s"The accuracy of the model $modelName for input file $singleFileName using AUROC is: $output1")
     else println(s"The accuracy of the model $modelName for input file $multipleFolder using AUROC is: $output1")
 
-    println(s"Classification results for $modelName using ConfusionMatrix: ")
+    println(s"Classification results for $modelName using ConfusionMatrix (smaller is better: ")
     if (singleFileUsed)
     println(s"The accuracy of the model $modelName for input file $singleFileName using Confusion Matrix is: $output2")
     else println(s"The accuracy of the model $modelName for input file $multipleFolder using Confusion Matrix is: $output2")
@@ -186,17 +185,16 @@ object ELMPipeline {
     * Perform cross validation on the data and select the best pipeline model given the data and parameters
     * This model uses the confusion matrix/ mean-squared-error approach, not AUROC, as AUROC is not useful
     * for classifiers which do not assign a probability score to the predictions, such as neural networks
-    * @param trainData the training dataset
-    * @param testData the test dataset
+    * @param data the data for which cross validation is to be performed
     * @param params the default parameters set for the ELM.
     * @param pipeline the pipeline to which cross validation is being applied
     * @param elm the ELM model being cross-validated
     */
-  private def performCrossValidation(trainData: DataFrame, testData: DataFrame, params: DefaultELMParams, pipeline: Pipeline, elm: ELMClassifier) :Unit = {
+  private def performCrossValidation(data: DataFrame, params: DefaultELMParams, pipeline: Pipeline, elm: ELMClassifier) :Unit = {
 
     val paramGrid = new ParamGridBuilder()
       .addGrid(elm.activationFunc, Array(params.activationFunc, "tanh", "sin"))
-      .addGrid(elm.hiddenNodes, Array(params.hiddenNodes, 10, 100, 150))
+      .addGrid(elm.hiddenNodes, Array(10, params.hiddenNodes, 100, 150))
       .build()
 
     println(s"ParamGrid size is ${paramGrid.size}")
@@ -208,11 +206,13 @@ object ELMPipeline {
       .setEstimator(pipeline)
       .setEvaluator(evaluator)
       .setEstimatorParamMaps(paramGrid)
-      .setNumFolds(5)
+      .setNumFolds(2) //do not attempt to set this higher than 3 - it causes a JavaOOM error
 
+    println("Performing cross-validation on the dataset")
     val cvStartTime = System.nanoTime()
-    val cvModel = cv.fit(trainData)
-    val cvPredictions = cvModel.transform(testData)
+    val cvModel = cv.fit(data)
+    val cvPredictions = cvModel.transform(data)
+    println(s"Parameters of this CV instance are ${cv.explainParams()}")
 
     evaluator.evaluate(cvPredictions)
     val crossValidationTime = (System.nanoTime() - cvStartTime) / 1e9

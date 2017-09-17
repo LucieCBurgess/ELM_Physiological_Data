@@ -38,9 +38,6 @@ class ELMClassifier(val uid: String) extends Classifier[Vector, ELMClassifier, E
     */
   override def train(ds: Dataset[_]): ELMModel = {
 
-    ds.cache()
-    ds.printSchema()
-
     val numClasses: Int = getNumClasses(ds)
     println(s"This is a binomial classifier and the number of classes is $numClasses")
 
