@@ -23,7 +23,7 @@ object ELMPipeline {
     * Do not attempt to run this on the full dataset!
     */
   val singleFileName: String = "mHealth_subject1.txt"
-  val singleFileUsed: Boolean = false
+  val singleFileUsed: Boolean = true
   val multipleFolder: String = "Multiple3"
 
   def run(params: DefaultELMParams): Unit = {

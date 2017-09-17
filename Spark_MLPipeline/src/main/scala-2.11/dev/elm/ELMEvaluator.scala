@@ -8,7 +8,7 @@ import org.apache.spark.sql.{DataFrame, Dataset}
 /**
   * Created by lucieburgess on 16/09/2017.
   */
-class ELMEvaluator(override val uid: String) extends Evaluator with ELMParams {
+class ELMEvaluator(override val uid: String) extends Evaluator {
 
   override def copy(extra: ParamMap): ELMEvaluator = defaultCopy(extra)
 
