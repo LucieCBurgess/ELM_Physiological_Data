@@ -33,7 +33,7 @@ object ELMMain {
 
       checkConfig { params =>
         if (params.fracTest < 0.1 || params.fracTest >= 0.6) {
-          failure(s"fracTest ${params.fracTest} value is incorrect; it should be in range [0,1).")
+          failure(s"fracTest ${params.fracTest} value is incorrect; it should be in range [0,0.6).")
         } else {
           success
         }

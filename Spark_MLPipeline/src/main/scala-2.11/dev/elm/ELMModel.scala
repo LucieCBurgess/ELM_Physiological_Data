@@ -77,8 +77,6 @@ class ELMModel(val uid: String, val modelWeights: BDM[Double], val modelBias: BD
 
     val rawPredictions: Array[Double] = Array(-T(0), T(0))
 
-    new SDV(rawPredictions) //length 1
-
-    //new SDV(T.t.toArray)// length 1, was new SDV(T.t.toArray)
+    new SDV(rawPredictions) //length 2
   }
 }

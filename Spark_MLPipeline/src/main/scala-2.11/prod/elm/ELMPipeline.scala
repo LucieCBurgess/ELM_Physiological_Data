@@ -105,7 +105,7 @@ object ELMPipeline {
 
     /** Perform cross-validation on the dataset */
     println("Performing cross validation and computing best parameter using the Confusion Matrix approach:")
-    performCrossValidation(dataWithFeatures, params, pipeline, elm)
+    performCrossValidation(testData, params, pipeline, elm)
 
     spark.stop()
   }

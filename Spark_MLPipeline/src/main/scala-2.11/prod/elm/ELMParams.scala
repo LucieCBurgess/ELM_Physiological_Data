@@ -46,7 +46,7 @@ trait ELMParams extends Params {
     * @throws IllegalArgumentException if fracTest is <0.10 or >0.50
     */
   val fracTest: DoubleParam =
-    new DoubleParam(this, "fracTest", "Fraction of data to be held out for testing", ParamValidators.inRange(0.10, 0.50))
+    new DoubleParam(this, "fracTest", "Fraction of data to be held out for testing", ParamValidators.inRange(0.10, 0.70))
     def getFracTest: Double = $(fracTest)
 
 }
