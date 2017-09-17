@@ -1,6 +1,6 @@
 package prod.logreg
 
-import dev.data_load.{DataLoadOption, DataLoadWTF}
+import prod.data_load.{DataLoadOption, DataLoadWTF}
 import org.apache.spark.ml.classification.{LogisticRegression, LogisticRegressionModel}
 import org.apache.spark.ml.evaluation.{BinaryClassificationEvaluator, Evaluator}
 import org.apache.spark.ml.feature.VectorAssembler
