@@ -228,35 +228,6 @@ testAccuracyRate
 
 # Using the test data also gives an accuracy rate of 84.4% for a normalized threshold of 0.40
 
-
-# Now tune for the number of hidden neurons //FIXME this loop is not working ...
-#########################################################################
-
-set.seed(1234)
-smp_size  <- floor(0.50*nrow(mHealth_1_labelled))
-train_index <- sample(seq_len(nrow(mHealth_1_labelled)),size = smp_size)
-
-train <- mHealth_1_labelled[train_index,]
-test <- mHealth_1_labelled[-train_index,]
-dim(train)
-
-tic("Tuning for the number of hidden neurons using the training data and a sigmoid activation function")
-trainAccuracyRate <- rep(0,8)
-dim(trainAccuracyRate)
-hidden_neurons = c(2,5,10,50,100,200,500,1000)
-dim(hidden_neurons)
-for (i in hidden_neurons) {
-  model <- elmtrain(train$Activity_Label_2~train$Acc_Chest_X+train$Acc_Chest_Y+train$Acc_Chest_Z, data=train, nhid=hidden_neurons[i], actfun="sig")
-  rawPrediction <- predict(model,newdata=NULL)
-  normPrediction <- (rawPrediction-min(rawPrediction))/(max(rawPrediction)-min(rawPrediction))
-  prediction <- ifelse(normPrediction<=0.45,0,1)
-  trainAccuracyRate[i] <- mean(prediction==train$Activity_Label_2)
-}
-trainAccuracyRate
-toc()
-############################################################################
-
-
 # Now trying a logistic binomial regression based on a number of factors, to understand which is the best predictor of activity level
 
 #glm.fit=glm(Direction~Lag1+Lag2+Lag3+Lag4+Lag5+Volume,data=Weekly,family=binomial)
