@@ -11,8 +11,8 @@ import org.apache.log4j.{Level, Logger}
 object ELMMain {
 
   /** switches off verbose output to the console. Can be set to INFO if preferred */
-  Logger.getLogger("org").setLevel(Level.ERROR)
-  Logger.getLogger("akka").setLevel(Level.ERROR)
+  Logger.getLogger("org").setLevel(Level.INFO)
+  Logger.getLogger("akka").setLevel(Level.INFO)
 
   def main(args: Array[String]): Unit = {
 

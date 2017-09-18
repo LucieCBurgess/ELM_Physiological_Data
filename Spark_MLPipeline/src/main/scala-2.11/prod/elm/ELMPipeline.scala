@@ -103,7 +103,7 @@ object ELMPipeline {
     evaluateClassificationModel("Train",pipelineModel, trainData)
     evaluateClassificationModel("Test", pipelineModel, testData)
 
-    /** Perform cross-validation on the dataset */
+    /** Perform cross-validation on the dataset. CV on the full dataset throws Java OOM error, so use testData */
     println("Performing cross validation and computing best parameter using the Confusion Matrix approach:")
     performCrossValidation(testData, params, pipeline, elm)
 
@@ -206,7 +206,7 @@ object ELMPipeline {
       .setEstimator(pipeline)
       .setEvaluator(evaluator)
       .setEstimatorParamMaps(paramGrid)
-      .setNumFolds(2) //do not attempt to set this higher than 3 - it causes a JavaOOM error
+      .setNumFolds(3)
 
     println("Performing cross-validation on the dataset")
     val cvStartTime = System.nanoTime()

@@ -141,7 +141,7 @@ object LRPipeline {
     predictions.printSchema()
 
     val selected = predictions.select("activityLabel", "binaryLabel", "features", "rawPrediction", "probability", "prediction")
-    selected.show()
+    selected.show(10)
 
     val evaluator = SingletonEvaluator.getEvaluator
 

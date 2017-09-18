@@ -5,6 +5,6 @@ package prod.elm
   * Sets default ELM params, for use in running the model and command line options parsing.
   */
 case class DefaultELMParams(activationFunc: String = "tanh",
-                            hiddenNodes: Int = 50,
+                            hiddenNodes: Int = 100,
                             fracTest: Double = 0.6)
 
